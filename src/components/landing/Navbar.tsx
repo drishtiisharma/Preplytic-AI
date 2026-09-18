@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sun, HelpCircle, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useTheme } from "next-themes";
 
 const navLinks = [
   { name: "Features", href: "#features" },
@@ -18,7 +17,6 @@ const navLinks = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { setTheme, theme } = useTheme();
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-zinc-100 dark:bg-zinc-950/80 dark:border-zinc-800">
@@ -57,16 +55,6 @@ export function Navbar() {
 
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 rounded-full"
-              >
-                <Sun className="h-5 w-5" />
-                <span className="sr-only">Toggle theme</span>
-              </Button>
-              
               <Link href="/login" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 px-3">
                 Log in
               </Link>

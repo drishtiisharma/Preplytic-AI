@@ -100,7 +100,7 @@ export default function LoginPage() {
             </Link>
           </div>
           
-          <Button type="submit" className="w-full h-11 bg-gradient-to-r from-teal-500 to-mint-400 hover:from-teal-600 hover:to-mint-500 text-white font-medium rounded-lg text-sm flex items-center justify-center shadow-md shadow-teal-500/20">
+          <Button type="button" onClick={handleGoogleLogin} className="w-full h-11 bg-gradient-to-r from-teal-500 to-mint-400 hover:from-teal-600 hover:to-mint-500 text-white font-medium rounded-lg text-sm flex items-center justify-center shadow-md shadow-teal-500/20">
             Login <span className="ml-1">→</span>
           </Button>
           
