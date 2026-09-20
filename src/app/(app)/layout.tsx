@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/layout/Sidebar";
+import { AuthWrapper } from "@/components/auth/AuthWrapper";
 import { TopNav } from "@/components/layout/TopNav";
 
 export default function AppLayout({
@@ -7,6 +8,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
+    <AuthWrapper>
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
@@ -20,5 +22,6 @@ export default function AppLayout({
         </main>
       </div>
     </div>
+    </AuthWrapper>
   );
 }

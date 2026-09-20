@@ -7,19 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
 
   const handleGoogleLogin = async () => {
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
-      },
-    });
+    localStorage.setItem("isLoggedIn", "true");
+    router.push("/dashboard");
+  };
+
+  const handleEmailLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem("isLoggedIn", "true");
+    router.push("/dashboard");
   };
 
   return (
@@ -51,7 +54,7 @@ export default function LoginPage() {
           <span className="absolute -bottom-3 left-0 w-8 h-0.5 bg-teal-500 rounded-full"></span>
         </p>
         
-        <form className="space-y-4">
+        <form className="space-y-4" onSubmit={handleEmailLogin}>
           <div className="space-y-2">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

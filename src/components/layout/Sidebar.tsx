@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { 
@@ -14,6 +14,7 @@ import {
   Map, 
   Settings, 
   CircleUser,
+  LogOut,
   ChevronLeft,
   ChevronRight,
   Sparkles
@@ -36,6 +37,7 @@ const secondaryNavigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
 
   return (

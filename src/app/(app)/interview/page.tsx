@@ -1,10 +1,273 @@
-import { PageContainer } from "@/components/layout/PageContainer";
+"use client";
 
-export default function InterviewPage() {
+import React from "react";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { 
+  StopCircle,
+  Settings,
+  Briefcase,
+  Clock,
+  BarChart,
+  CheckCircle2,
+  Sparkles,
+  Bot,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  PhoneOff,
+  Download,
+  MessageSquare,
+  Play
+} from "lucide-react";
+
+// Mock Data
+const setupData = {
+  targetJob: "Software Engineer @ Google",
+  duration: "30 Minutes",
+  difficulty: "Hard",
+  resumeTopics: ["React", "Node.js", "System Design"],
+  jobTopics: ["Scalability", "Algorithms", "Cloud Architecture"]
+};
+
+const interviewState = {
+  status: "active", // setup | active | finished
+  timeElapsed: "12:45",
+  currentQuestion: "Can you explain a time you had to optimize a slow-performing system? What steps did you take, and how did you measure success?",
+  isAiSpeaking: true
+};
+
+const messages = [
+  { id: 1, sender: "ai", text: "Hello! I'm your AI Interviewer. I see you're applying for the Software Engineer role at Google. Are you ready to begin?", time: "10:00 AM" },
+  { id: 2, sender: "user", text: "Yes, I'm ready.", time: "10:01 AM" },
+  { id: 3, sender: "ai", text: "Great. Let's start with your background. Can you walk me through your most recent project involving React and Node.js?", time: "10:01 AM" },
+  { id: 4, sender: "user", text: "Certainly. In my last role, I led the migration of a legacy dashboard to React, backed by a Node.js API. We focused heavily on component reusability and reducing load times...", time: "10:03 AM" },
+  { id: 5, sender: "ai", text: "Can you explain a time you had to optimize a slow-performing system? What steps did you take, and how did you measure success?", time: "10:05 AM" }
+];
+
+export default function AIInterviewPage() {
   return (
-    <PageContainer title="Interview Prep" description="Practice for your upcoming interviews.">
-      <div className="flex h-[400px] items-center justify-center rounded-xl border border-dashed text-muted-foreground">
-        AI Interview practice tools will appear here.
+    <PageContainer>
+      <div className="max-w-[1600px] mx-auto space-y-6 pb-6 h-full min-h-[calc(100vh-6rem)] flex flex-col">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">AI Interview Preparation</h1>
+            <p className="text-muted-foreground text-[15px] mt-1 max-w-2xl">
+              Practice answering questions dynamically tailored to your resume and the job description.
+            </p>
+          </div>
+          <div className="flex items-center shrink-0">
+            <Button variant="destructive" className="h-10 rounded-xl font-medium shadow-sm">
+              <StopCircle className="w-4 h-4 mr-2" />
+              End Interview
+            </Button>
+          </div>
+        </div>
+
+        {/* 3 Columns Workspace */}
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] xl:grid-cols-[320px_1fr_380px] gap-6 flex-1 min-h-0">
+          
+          {/* 1. Interview Setup Column */}
+          <div className="flex flex-col gap-6 overflow-y-auto pr-1">
+            <Card className="rounded-3xl border-slate-200 shadow-sm p-5 bg-white dark:bg-card">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-[16px] font-bold text-slate-900 dark:text-white">Interview Setup</h3>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Target Job</label>
+                  <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-border">
+                    <Briefcase className="w-4 h-4 text-teal-600" />
+                    <span className="text-[14px] font-semibold text-slate-700 dark:text-slate-200">{setupData.targetJob}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Duration</label>
+                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-border">
+                      <Clock className="w-4 h-4 text-slate-400" />
+                      <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">{setupData.duration}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Difficulty</label>
+                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-border">
+                      <BarChart className="w-4 h-4 text-red-400" />
+                      <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">{setupData.difficulty}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Topics from Resume</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {setupData.resumeTopics.map(topic => (
+                      <span key={topic} className="inline-flex items-center px-2 py-1 rounded-md bg-teal-50 dark:bg-teal-950/30 text-[11px] font-medium text-teal-700 dark:text-teal-400 border border-teal-100/50 dark:border-teal-900/30">
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Topics from JD</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {setupData.jobTopics.map(topic => (
+                      <span key={topic} className="inline-flex items-center px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/30 text-[11px] font-medium text-indigo-700 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30">
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <Button className="w-full h-12 rounded-xl bg-teal-500 hover:bg-teal-600 text-white shadow-sm font-bold text-[14px] mt-2">
+                  <Play className="w-4 h-4 mr-2 fill-current" />
+                  Start Interview
+                </Button>
+              </div>
+            </Card>
+
+            <Card className="rounded-2xl border-transparent bg-gradient-to-br from-[#f0fbf9] to-white dark:from-teal-950/20 dark:to-card shadow-sm p-4 border border-teal-100/50 dark:border-teal-900/30 mt-auto">
+              <div className="flex items-start gap-3">
+                <Sparkles className="w-4 h-4 text-teal-500 mt-0.5 shrink-0" />
+                <p className="text-[12px] text-teal-800 dark:text-teal-300 font-medium leading-relaxed">
+                  The AI will automatically adapt follow-up questions based on your answers to simulate a real interview environment.
+                </p>
+              </div>
+            </Card>
+          </div>
+
+          {/* 2. AI Interviewer Column */}
+          <div className="flex flex-col gap-6">
+            <Card className="flex-1 rounded-3xl border-slate-200 shadow-sm bg-white dark:bg-card overflow-hidden flex flex-col relative min-h-[400px]">
+              
+              {/* Top Bar inside interviewer */}
+              <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300 tracking-wide uppercase">Live</span>
+                  <span className="text-[12px] font-medium text-slate-500 ml-1 border-l border-slate-300 dark:border-slate-700 pl-2">{interviewState.timeElapsed}</span>
+                </div>
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
+                  <Bot className="w-4 h-4 text-teal-500" />
+                  <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300">AI Interviewer</span>
+                </div>
+              </div>
+
+              {/* Central Animation Area */}
+              <div className="flex-1 bg-slate-50 dark:bg-[#0c1015] flex flex-col items-center justify-center relative">
+                
+                {/* Decorative background circles */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+                  <div className="w-64 h-64 border border-teal-500/10 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]" />
+                  <div className="absolute w-96 h-96 border border-teal-500/5 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite] animation-delay-1000" />
+                </div>
+
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 shadow-xl flex items-center justify-center mb-8 border-4 border-white dark:border-slate-800 relative">
+                    <Bot className="w-14 h-14 text-white" />
+                    {interviewState.isAiSpeaking && (
+                      <div className="absolute -bottom-2 -right-2 bg-emerald-500 w-6 h-6 rounded-full border-2 border-white dark:border-slate-800 flex items-center justify-center">
+                        <Volume2 className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Soundwave representation */}
+                  <div className="flex items-end justify-center gap-1.5 h-12">
+                    {[1, 2, 3, 4, 5, 4, 3, 2, 1].map((val, i) => (
+                      <div 
+                        key={i} 
+                        className={"w-1.5 rounded-full bg-teal-500/80 transition-all duration-150 " + (interviewState.isAiSpeaking ? ("h-" + (val * 2 + 2)) : "h-2")}
+                        style={{ animation: interviewState.isAiSpeaking ? 'pulse-y 1s ease-in-out infinite alternate' : 'none', animationDelay: i * 0.1 + 's' }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-[13px] font-medium text-slate-500 mt-4">AI is speaking...</p>
+                </div>
+              </div>
+
+              {/* Bottom Controls */}
+              <div className="p-6 bg-white dark:bg-card border-t border-slate-100 dark:border-border">
+                
+                {/* Current Question */}
+                <div className="mb-6 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-border">
+                  <p className="text-[12px] font-bold text-teal-600 dark:text-teal-400 mb-1.5 uppercase tracking-wider">Current Question</p>
+                  <p className="text-[15px] font-medium text-slate-800 dark:text-slate-200 leading-relaxed">
+                    "{interviewState.currentQuestion}"
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-center gap-4">
+                  <Button variant="outline" size="icon" className="w-14 h-14 rounded-2xl border-slate-200 text-slate-600 hover:bg-slate-50 bg-white">
+                    <Mic className="w-5 h-5" />
+                  </Button>
+                  <Button variant="destructive" className="h-14 px-8 rounded-2xl font-bold shadow-md shadow-red-500/20">
+                    <PhoneOff className="w-5 h-5 mr-2" />
+                    End Call
+                  </Button>
+                  <Button variant="outline" size="icon" className="w-14 h-14 rounded-2xl border-slate-200 text-slate-600 hover:bg-slate-50 bg-white">
+                    <Volume2 className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* 3. Live Conversation Column */}
+          <Card className="rounded-3xl border-slate-200 shadow-sm bg-white dark:bg-card flex flex-col overflow-hidden xl:col-span-1 lg:col-span-2 hidden lg:flex">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-border bg-slate-50/50 dark:bg-slate-900/20 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <MessageSquare className="w-4 h-4 text-teal-600" />
+                <h3 className="text-[15px] font-bold text-slate-900 dark:text-white">Live Transcript</h3>
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
+                <Download className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              {messages.map((msg) => (
+                <div key={msg.id} className={"flex flex-col gap-1 max-w-[85%] " + (msg.sender === "user" ? "ml-auto items-end" : "mr-auto items-start")}>
+                  
+                  <div className={"flex items-center gap-2 text-[11px] font-medium " + (msg.sender === "user" ? "text-slate-400 flex-row-reverse" : "text-teal-600")}>
+                    {msg.sender === "ai" ? "AI Interviewer" : "You"}
+                    <span className="text-slate-300 dark:text-slate-600">•</span>
+                    <span className="text-slate-400">{msg.time}</span>
+                  </div>
+
+                  <div className={"p-3.5 rounded-2xl text-[14px] leading-relaxed " + (msg.sender === "user" ? "bg-teal-500 text-white rounded-tr-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-sm")}>
+                    {msg.text}
+                  </div>
+                  
+                </div>
+              ))}
+            </div>
+
+            {/* Speaking Indicator */}
+            <div className="p-4 border-t border-slate-100 dark:border-border bg-slate-50/80 dark:bg-slate-900/50 shrink-0 flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+              <p className="text-[12px] font-medium text-slate-500">AI is speaking...</p>
+            </div>
+          </Card>
+
+        </div>
+        
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes pulse-y {
+            0% { transform: scaleY(0.4); }
+            100% { transform: scaleY(1); }
+          }
+        `}} />
       </div>
     </PageContainer>
   );
