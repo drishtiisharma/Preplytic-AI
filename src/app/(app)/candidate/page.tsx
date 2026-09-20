@@ -1,6 +1,7 @@
 import React from "react";
 import { getCandidateProfile } from "./actions";
 import { ResumeUploader } from "@/components/candidate/ResumeUploader";
+import { EditProfileDialog } from "@/components/candidate/EditProfileDialog";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -93,10 +94,7 @@ export default async function CandidateProfilePage() {
           </div>
           <div className="flex items-center gap-3">
             <ResumeUploader existingStoragePath={profile?.resume_metadata?.storagePath} />
-            <Button className="h-10 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-medium shadow-sm">
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Profile
-            </Button>
+            <EditProfileDialog profile={profile} />
           </div>
         </div>
 
