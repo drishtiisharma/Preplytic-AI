@@ -1,6 +1,6 @@
-"use client";
-
 import React from "react";
+import { getCandidateProfile } from "./actions";
+import { ResumeUploader } from "@/components/candidate/ResumeUploader";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,56 +25,62 @@ import {
   Clock
 } from "lucide-react";
 
-// Mock Data
-const candidateData = {
-  firstName: "Jane",
-  lastName: "Doe",
-  initials: "JD",
-  email: "jane.doe@example.com",
-  phone: "+1 234 567 8900",
-  location: "San Francisco, CA",
-  linkedin: "linkedin.com/in/janedoe",
-  experience: "4.5 years",
-  currentRole: "Senior Developer",
-  highestEducation: "M.S. in Computer Science",
-  availability: "2 Weeks Notice",
-  summary: "Experienced software engineer with 4+ years in building scalable web applications using React, Next.js, TypeScript, Node.js and PostgreSQL. Strong problem-solving skills and passion for AI-powered tools and backend systems.",
-  skills: ["React", "Next.js", "TypeScript", "Node.js", "Python", "PostgreSQL", "Tailwind CSS"],
-  additionalSkillsCount: 8,
-};
 
-const matchData = {
-  overallScore: 82,
-  categories: [
-    { name: "Skills Match", score: 90 },
-    { name: "Experience Match", score: 85 },
-    { name: "Education Match", score: 95 },
-    { name: "Keyword Match", score: 70 },
-  ]
-};
 
-const topSkills = [
-  { name: "JavaScript / TypeScript", level: "Expert", progress: 95 },
-  { name: "React / Next.js", level: "Expert", progress: 90 },
-  { name: "Node.js", level: "Advanced", progress: 80 },
-  { name: "Python", level: "Advanced", progress: 75 },
-  { name: "PostgreSQL", level: "Intermediate", progress: 60 },
-];
+export default async function CandidateProfilePage() {
+  const profile = await getCandidateProfile();
 
-const resumeData = {
-  filename: "Jane_Doe_Resume_2026.pdf",
-  uploadDate: "Oct 15, 2026",
-  size: "845 KB",
-};
+  const candidateData = profile ? {
+    firstName: profile.name ? profile.name.split(" ")[0] : "Your",
+    lastName: profile.name ? profile.name.split(" ").slice(1).join(" ") : "Profile",
+    initials: profile.name ? profile.name.substring(0,2).toUpperCase() : "NA",
+    email: profile.email || "Add email",
+    phone: profile.phone || "Add phone",
+    location: profile.location || "Add location",
+    linkedin: profile.linkedin_url || "Add LinkedIn",
+    experience: (profile.experience && profile.experience.length > 0) ? profile.experience[0].title || "Not specified" : "Add experience",
+    currentRole: profile.current_role || "Add current role",
+    highestEducation: (profile.education && profile.education.length > 0) ? profile.education[0].degree || "Not specified" : "Add education",
+    availability: profile.preferences?.availability || "Add availability",
+    summary: profile.summary || "Add a profile summary to highlight your expertise.",
+    skills: profile.skills || [],
+    additionalSkillsCount: 0,
+  } : {
+    firstName: "Your",
+    lastName: "Profile",
+    initials: "UP",
+    email: "Add email",
+    phone: "Add phone",
+    location: "Add location",
+    linkedin: "Add LinkedIn",
+    experience: "Add experience",
+    currentRole: "Add current role",
+    highestEducation: "Add education",
+    availability: "Add availability",
+    summary: "Add a profile summary to highlight your expertise.",
+    skills: [],
+    additionalSkillsCount: 0,
+  };
 
-const recentActivity = [
-  { action: "Resume updated", date: "Oct 15, 2026", time: "2:30 PM", dotColor: "bg-teal-500" },
-  { action: "Profile information updated", date: "Oct 10, 2026", time: "11:15 AM", dotColor: "bg-teal-500" },
-  { action: "Added new skill: GraphQL", date: "Oct 8, 2026", time: "4:45 PM", dotColor: "bg-teal-500" },
-  { action: "Profile created", date: "Oct 1, 2026", time: "10:00 AM", dotColor: "bg-teal-500" },
-];
+  const matchData = {
+    overallScore: 0,
+    categories: [
+      { name: "Skills Match", score: 0 },
+      { name: "Experience Match", score: 0 },
+      { name: "Education Match", score: 0 },
+      { name: "Keyword Match", score: 0 },
+    ]
+  };
 
-export default function CandidateProfilePage() {
+  const topSkills: any[] = [];
+
+  const resumeData = {
+    filename: profile?.resume_metadata?.filename || "No resume uploaded",
+    uploadDate: profile?.resume_metadata?.uploadDate || "-",
+    size: profile?.resume_metadata?.size || "-",
+  };
+
+  const recentActivity = profile?.activity || [];
   return (
     <PageContainer>
       <div className="max-w-6xl mx-auto space-y-8 pb-10">
@@ -86,10 +92,7 @@ export default function CandidateProfilePage() {
             <p className="text-muted-foreground text-[15px] mt-1">Manage your resume, skills and preferences to get better job matches.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="h-10 rounded-xl border-slate-200 text-slate-700 font-medium bg-white hover:bg-slate-50 dark:bg-card dark:hover:bg-slate-900 dark:border-border">
-              <Upload className="w-4 h-4 mr-2" />
-              Upload New Resume
-            </Button>
+            <ResumeUploader existingStoragePath={profile?.resume_metadata?.storagePath} />
             <Button className="h-10 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-medium shadow-sm">
               <Edit className="w-4 h-4 mr-2" />
               Edit Profile
@@ -191,9 +194,7 @@ export default function CandidateProfilePage() {
                         {skill}
                       </span>
                     ))}
-                    <span className="inline-flex items-center px-3 py-1 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[13px] font-medium text-slate-600 dark:text-slate-400">
-                      +{candidateData.additionalSkillsCount} more
-                    </span>
+                    {candidateData.additionalSkillsCount > 0 && <span className="inline-flex items-center px-3 py-1 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[13px] font-medium text-slate-600 dark:text-slate-400">+{candidateData.additionalSkillsCount} more</span>}
                   </div>
                 </Card>
 
@@ -280,10 +281,13 @@ export default function CandidateProfilePage() {
                         <Eye className="w-4 h-4 mr-2" />
                         Preview Resume
                       </Button>
-                      <Button variant="ghost" className="w-full h-10 text-teal-600 hover:text-teal-700 hover:bg-teal-50/50 font-medium">
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Replace Resume
-                      </Button>
+                      <ResumeUploader 
+                          existingStoragePath={profile?.resume_metadata?.storagePath} 
+                          variant="ghost" 
+                          className="w-full h-10 text-teal-600 hover:text-teal-700 hover:bg-teal-50/50 font-medium"
+                          label="Replace Resume"
+                          icon={<RefreshCw className="w-4 h-4 mr-2" />}
+                        />
                     </div>
                   </Card>
 

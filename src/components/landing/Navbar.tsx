@@ -58,9 +58,7 @@ export function Navbar() {
               <Link href="/login" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 px-3">
                 Log in
               </Link>
-              <Button asChild className="bg-teal-500 hover:bg-teal-600 text-white rounded-full px-6">
-                <Link href="/signup">Sign up</Link>
-              </Button>
+              <Button render={<Link href="/signup">Sign up</Link>} className="bg-teal-500 hover:bg-teal-600 text-white rounded-full px-6" />
             </div>
 
             {/* Mobile Menu */}
@@ -86,9 +84,7 @@ export function Navbar() {
                   <Link href="/login" className="text-lg font-medium">
                     Log in
                   </Link>
-                  <Button asChild className="bg-teal-500 hover:bg-teal-600 text-white rounded-full w-full mt-2">
-                    <Link href="/signup">Sign up</Link>
-                  </Button>
+                  <Button render={<Link href="/signup">Sign up</Link>} className="bg-teal-500 hover:bg-teal-600 text-white rounded-full w-full mt-2" />
                 </nav>
               </SheetContent>
             </Sheet>
