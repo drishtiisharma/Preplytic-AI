@@ -9,14 +9,13 @@ export default function AppLayout({
 }) {
   return (
     <AuthWrapper>
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block">
-        <Sidebar />
-      </div>
-
-      <div className="flex w-0 flex-1 flex-col overflow-hidden">
-        <TopNav />
+    <div className="flex flex-col h-screen overflow-hidden bg-background">
+      <TopNav />
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop Sidebar */}
+        <div className="hidden md:block h-full">
+          <Sidebar />
+        </div>
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </main>

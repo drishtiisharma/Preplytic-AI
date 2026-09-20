@@ -60,25 +60,7 @@ export function Sidebar() {
         )}
       </Button>
 
-      <div className={cn("flex h-24 items-center", collapsed ? "justify-center px-0" : "px-8")}>
-        <Link href="/" className="flex items-center gap-2 overflow-hidden">
-          {collapsed ? (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-mint-400 shrink-0 shadow-sm">
-              <span className="font-bold text-white text-xl">P</span>
-            </div>
-          ) : (
-            <div className="relative h-10 w-40 shrink-0">
-               <Image 
-                 src="/logo.png" 
-                 alt="Preplytic AI" 
-                 fill 
-                 className="object-contain object-left dark:brightness-200 dark:contrast-100" 
-                 priority
-               />
-            </div>
-          )}
-        </Link>
-      </div>
+
 
       <div className="flex flex-1 flex-col justify-between overflow-y-auto pb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <nav className="space-y-1.5 mt-2 flex flex-col">
