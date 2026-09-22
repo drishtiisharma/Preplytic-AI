@@ -25,7 +25,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
   { name: "Job Profiles", href: "/job-profiles", icon: Briefcase },
   { name: "Candidate Profile", href: "/candidate", icon: User },
-  { name: "Quick Apply", href: "/quick-jobs", icon: Send },
+  { name: "Quick Apply", href: "/quick-apply", icon: Send },
   { name: "Interview Prep", href: "/interview", icon: MessageSquare },
   { name: "Preparation Roadmap", href: "/roadmap", icon: Map },
 ];

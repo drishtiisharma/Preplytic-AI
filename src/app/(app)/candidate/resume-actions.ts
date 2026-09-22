@@ -36,7 +36,7 @@ export async function saveResumeRecord(metadata: {
     // Candidate profile update removed to avoid schema errors.
 
     revalidatePath("/candidate");
-    revalidatePath("/quick-jobs");
+    revalidatePath("/quick-apply");
 
     return { success: true };
   } catch (err) {
