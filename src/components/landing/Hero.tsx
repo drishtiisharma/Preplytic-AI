@@ -28,8 +28,8 @@ export function Hero() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 mb-16">
-              <Button asChild size="lg" className="bg-teal-500 hover:bg-teal-600 text-white rounded-full px-8 h-12 text-base">
-                <Link href="/signup">Get Started for Free <ArrowRight className="ml-2 w-4 h-4" /></Link>
+              <Button size="lg" nativeButton={false} render={<Link href="/signup" />} className="bg-teal-500 hover:bg-teal-600 text-white rounded-full px-8 h-12 text-base">
+                Get Started for Free <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
               <Button size="lg" variant="outline" className="rounded-full px-8 h-12 text-base border-zinc-200 text-teal-600 hover:bg-teal-50 dark:border-zinc-800 dark:text-teal-400 dark:hover:bg-teal-950/50">
                 <Play className="mr-2 w-4 h-4" /> Watch Demo

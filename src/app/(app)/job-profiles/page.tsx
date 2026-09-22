@@ -1,32 +1,56 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { useJobProfiles } from "@/hooks/useJobProfiles";
-import { 
-  Briefcase, 
-  Bookmark, 
-  Clock, 
-  Target, 
-  Search, 
-  ChevronDown, 
-  List, 
-  Grid, 
-  MoreVertical, 
-  Link as LinkIcon, 
+import { useJobProfiles, JobProfile } from "@/hooks/useJobProfiles";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useRouter } from "next/navigation";
+import {
+  Briefcase,
+  Edit2,
+  Trash2,
+  Bookmark,
+  Clock,
+  Target,
+  Search,
+  ChevronDown,
+  List,
+  Grid,
+  MoreVertical,
+  Link as LinkIcon,
   Plus,
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
 
 export default function JobProfilesPage() {
-  const { profiles } = useJobProfiles();
-  
+  const { profiles, deleteProfile } = useJobProfiles();
+  const [selectedProfile, setSelectedProfile] = useState<JobProfile | null>(null);
+  const [profileToDelete, setProfileToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
+
+  const handleDelete = async () => {
+    if (!profileToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteProfile(profileToDelete);
+      setProfileToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete profile", error);
+      alert("Failed to delete profile. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const mockStats = {
     total: profiles.length,
     active: profiles.filter(p => p.status === "Active").length,
@@ -37,7 +61,7 @@ export default function JobProfilesPage() {
   return (
     <PageContainer>
       <div className="space-y-8 max-w-[1400px] mx-auto pb-10">
-        
+
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
@@ -49,18 +73,18 @@ export default function JobProfilesPage() {
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <Button className="h-10 bg-teal-500 hover:bg-teal-600 text-white font-medium" asChild>
-              <Link href="/job-profiles/create">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Job Profile
-              </Link>
+            <Button className="h-10 bg-teal-500 hover:bg-teal-600 text-white font-medium" nativeButton={false} render={<Link href="/job-profiles/create" />}>
+
+              <><Plus className="w-4 h-4 mr-2" />
+                Create Job Profile</>
+
             </Button>
           </div>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
+
           <div className="flex items-center gap-5 p-5 bg-white border border-zinc-100 shadow-sm rounded-xl">
             <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
               <Briefcase className="w-5 h-5 text-teal-600" />
@@ -82,7 +106,7 @@ export default function JobProfilesPage() {
               <p className="text-[11px] text-teal-600 font-medium">Ready for application</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-5 p-5 bg-white border border-zinc-100 shadow-sm rounded-xl">
             <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
               <Clock className="w-5 h-5 text-teal-600" />
@@ -111,8 +135,8 @@ export default function JobProfilesPage() {
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
           <div className="relative w-full lg:max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-            <Input 
-              placeholder="Search by job title, company, or keyword..." 
+            <Input
+              placeholder="Search by job title, company, or keyword..."
               className="pl-9 h-11 bg-white border-zinc-200 w-full"
             />
           </div>
@@ -150,7 +174,6 @@ export default function JobProfilesPage() {
                   <th className="px-6 py-4 font-medium w-[25%]">Role</th>
                   <th className="px-6 py-4 font-medium hidden md:table-cell">Match Score</th>
                   <th className="px-6 py-4 font-medium hidden sm:table-cell">Added On</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -162,9 +185,9 @@ export default function JobProfilesPage() {
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0 mt-0.5 ${profile.logoColor}`}>
                           {profile.logoChar}
                         </div>
-                        <div>
+                        <div onClick={() => setSelectedProfile(profile)}>
                           <div className="font-semibold text-zinc-900 mb-0.5 group-hover:text-teal-600 transition-colors cursor-pointer">{profile.title}</div>
-                          <div className="text-zinc-500 text-xs mb-1">{profile.company}</div>
+                          <div className="text-zinc-500 text-xs mb-1 cursor-pointer hover:text-teal-600 transition-colors">{profile.company}</div>
                           <div className="text-zinc-400 text-[11px]">{profile.location}</div>
                         </div>
                       </div>
@@ -178,9 +201,9 @@ export default function JobProfilesPage() {
                     <td className="px-6 py-4 align-top hidden md:table-cell">
                       <div className="flex flex-col gap-1.5 pt-1 w-[120px]">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="font-medium text-zinc-700">{profile.matchScore}%</span>
+                          <span className="font-medium text-zinc-700">0%</span>
                         </div>
-                        <Progress value={profile.matchScore} className="h-1.5 bg-zinc-100 [&>div]:bg-teal-500" />
+                        <Progress value={0} className="h-1.5 bg-zinc-100 [&>div]:bg-teal-500" />
                       </div>
                     </td>
                     <td className="px-6 py-4 align-top hidden sm:table-cell">
@@ -189,24 +212,25 @@ export default function JobProfilesPage() {
                         <div className="text-xs text-zinc-400">{profile.addedOnRelative}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 align-top">
-                      <div className="pt-1.5">
-                        {profile.status === "Active" ? (
-                          <span className="inline-flex items-center text-xs font-medium text-teal-600">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center text-xs font-medium text-zinc-400">
-                            Inactive
-                          </span>
-                        )}
-                      </div>
-                    </td>
                     <td className="px-6 py-4 align-top text-right">
                       <div className="pt-0.5">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-700">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-700">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => router.push(`/job-profiles/create?edit=${profile.id}`)}>
+                              <Edit2 className="w-4 h-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => setProfileToDelete(profile.id)}>
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </td>
                   </tr>
@@ -238,6 +262,69 @@ export default function JobProfilesPage() {
         </div>
 
       </div>
+
+      <Dialog open={!!selectedProfile} onOpenChange={(open) => !open && setSelectedProfile(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">{selectedProfile?.title}</DialogTitle>
+            <DialogDescription className="text-base font-medium text-teal-600">
+              {selectedProfile?.company} • {selectedProfile?.location}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-6">
+            {selectedProfile?.jobDescription ? (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-zinc-900 border-b pb-1">Job Description</h4>
+                <p className="text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed">{selectedProfile.jobDescription}</p>
+              </div>
+            ) : (
+              <div className="text-sm text-zinc-500 italic">No job description available for this profile.</div>
+            )}
+
+            {(selectedProfile?.requiredSkills || selectedProfile?.preferredSkills) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedProfile?.requiredSkills && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-zinc-900 border-b pb-1">Required Skills</h4>
+                    <p className="text-sm text-zinc-700 whitespace-pre-wrap">{selectedProfile.requiredSkills}</p>
+                  </div>
+                )}
+                {selectedProfile?.preferredSkills && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-zinc-900 border-b pb-1">Preferred Skills</h4>
+                    <p className="text-sm text-zinc-700 whitespace-pre-wrap">{selectedProfile.preferredSkills}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!profileToDelete} onOpenChange={(open) => !open && setProfileToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the job profile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </PageContainer>
   );
 }
