@@ -4,8 +4,6 @@ import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { useRouter } from "next/navigation";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { 
@@ -45,16 +43,12 @@ const messages = [
 
 export default function AIInterviewPage() {
   const supabase = createClient();
-  const router = useRouter();
-  const router = useRouter();
   const [jobProfiles, setJobProfiles] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [resumes, setResumes] = useState<any[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string>("");
   const [selectedDuration, setSelectedDuration] = useState<string>("30 Minutes");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Hard");
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const availableResumeTopics = ["React", "Node.js", "System Design", "TypeScript", "Next.js"];
   const [selectedResumeTopics, setSelectedResumeTopics] = useState<string[]>(["React", "Node.js", "System Design"]);
@@ -92,7 +86,7 @@ export default function AIInterviewPage() {
     loadJobs();
   }, []);
 
-  const handleStartInterview = async () => {
+  const handleStartInterview = () => {
     const newErrors: { [key: string]: string } = {};
     if (!selectedJobId) newErrors.job = "Job Profile is required";
     if (!selectedResumeId) newErrors.resume = "Resume is required";
@@ -102,92 +96,6 @@ export default function AIInterviewPage() {
       newErrors.topics = "At least one topic (JD or Resume) must be selected";
     }
     setErrors(newErrors);
-
-    if (Object.keys(newErrors).length === 0) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setErrors({ submit: "You must be logged in to start an interview." });
-          return;
-        }
-
-        const durationMinutes = parseInt(selectedDuration.split(" ")[0]) || 30;
-
-        const { data, error } = await supabase
-          .from("interview_sessions")
-          .insert({
-            user_id: user.id,
-            job_profile_id: selectedJobId,
-            resume_id: selectedResumeId,
-            duration_minutes: durationMinutes,
-            selected_jd_topics: selectedJobTopics,
-            selected_resume_topics: selectedResumeTopics,
-            difficulty: selectedDifficulty,
-            status: "created"
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error(error);
-          setErrors({ submit: "Failed to create interview session. Please try again." });
-        } else if (data) {
-          router.push(`/interview/${data.id}`);
-        }
-      } catch (err) {
-        console.error(err);
-        setErrors({ submit: "An unexpected error occurred." });
-      }
-    }
-  };
-
-  const handleStartInterview = async () => {
-    const newErrors: { [key: string]: string } = {};
-    if (!selectedJobId) newErrors.job = "Job Profile is required";
-    if (!selectedResumeId) newErrors.resume = "Resume is required";
-    if (!selectedDuration) newErrors.duration = "Duration is required";
-    if (!selectedDifficulty) newErrors.difficulty = "Difficulty is required";
-    if (selectedJobTopics.length === 0 && selectedResumeTopics.length === 0) {
-      newErrors.topics = "At least one topic (JD or Resume) must be selected";
-    }
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length === 0) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setErrors({ submit: "You must be logged in to start an interview." });
-          return;
-        }
-
-        const durationMinutes = parseInt(selectedDuration.split(" ")[0]) || 30;
-
-        const { data, error } = await supabase
-          .from("interview_sessions")
-          .insert({
-            user_id: user.id,
-            job_profile_id: selectedJobId,
-            resume_id: selectedResumeId,
-            duration_minutes: durationMinutes,
-            selected_jd_topics: selectedJobTopics,
-            selected_resume_topics: selectedResumeTopics,
-            difficulty: selectedDifficulty,
-            status: "created"
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error(error);
-          setErrors({ submit: "Failed to create interview session. Please try again." });
-        } else if (data) {
-          router.push(`/interview/${data.id}`);
-        }
-      } catch (err) {
-        console.error(err);
-        setErrors({ submit: "An unexpected error occurred." });
-      }
-    }
   };
 
   return (
@@ -236,6 +144,7 @@ export default function AIInterviewPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.job && <p className="text-red-500 text-[11px] font-medium mt-1">{errors.job}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -253,6 +162,7 @@ export default function AIInterviewPage() {
                           <SelectItem value="60 Minutes">60 Minutes</SelectItem>
                         </SelectContent>
                   </Select>
+                  {errors.job && <p className="text-red-500 text-[11px] font-medium mt-1">{errors.job}</p>}
                 </div>
                   <div className="space-y-1.5">
                       <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Difficulty</label>
@@ -267,6 +177,7 @@ export default function AIInterviewPage() {
                           <SelectItem value="Hard">Hard</SelectItem>
                         </SelectContent>
                   </Select>
+                  {errors.job && <p className="text-red-500 text-[11px] font-medium mt-1">{errors.job}</p>}
                 </div>
                 </div>
 
@@ -282,7 +193,7 @@ export default function AIInterviewPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {errors.resume && <p className="text-red-500 text-[11px] font-medium mt-1">{errors.resume}</p>}
+                  {errors.job && <p className="text-red-500 text-[11px] font-medium mt-1">{errors.job}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -290,7 +201,19 @@ export default function AIInterviewPage() {
                   <div className="flex flex-wrap gap-1.5">
                     {availableJobTopics.map(topic => {
                       const isSelected = selectedJobTopics.includes(topic);
-                      return (
+                      const handleStartInterview = () => {
+    const newErrors: { [key: string]: string } = {};
+    if (!selectedJobId) newErrors.job = "Job Profile is required";
+    if (!selectedResumeId) newErrors.resume = "Resume is required";
+    if (!selectedDuration) newErrors.duration = "Duration is required";
+    if (!selectedDifficulty) newErrors.difficulty = "Difficulty is required";
+    if (selectedJobTopics.length === 0 && selectedResumeTopics.length === 0) {
+      newErrors.topics = "At least one topic (JD or Resume) must be selected";
+    }
+    setErrors(newErrors);
+  };
+
+  return (
                         <button 
                           key={topic}
                           onClick={() => toggleJobTopic(topic)}
@@ -305,12 +228,9 @@ export default function AIInterviewPage() {
                       );
                     })}
                   </div>
-                   {errors.topics && <p className="text-red-500 text-[11px] font-medium mt-1">{errors.topics}</p>}
                 </div>
 
-                {errors.submit && <p className="text-red-500 text-[13px] font-medium mt-2 text-center">{errors.submit}</p>}
-                {errors.submit && <p className="text-red-500 text-[13px] font-medium mt-2 text-center">{errors.submit}</p>}
-                <Button onClick={handleStartInterview} className="w-full h-12 rounded-xl bg-teal-500 hover:bg-teal-600 text-white shadow-sm font-bold text-[14px] mt-2">
+                <Button className="w-full h-12 rounded-xl bg-teal-500 hover:bg-teal-600 text-white shadow-sm font-bold text-[14px] mt-2">
                   <Play className="w-4 h-4 mr-2 fill-current" />
                   Start Interview
                 </Button>

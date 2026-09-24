@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useRouter } from "next/navigation";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { 
@@ -43,9 +42,9 @@ const messages = [
   { id: 5, sender: "ai", text: "Can you explain a time you had to optimize a slow-performing system? What steps did you take, and how did you measure success?", time: "10:05 AM" }
 ];
 
-export default function AIInterviewPage() {
+export default function AIInterviewPage({ params }: { params: { sessionId: string } }) {
+  const { sessionId } = params;
   const supabase = createClient();
-  const router = useRouter();
   const router = useRouter();
   const [jobProfiles, setJobProfiles] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
@@ -54,6 +53,60 @@ export default function AIInterviewPage() {
   const [selectedDuration, setSelectedDuration] = useState<string>("30 Minutes");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Hard");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    async function loadSession() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('interview_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .single();
+        
+      if (data && data.user_id === user.id) {
+        setSelectedJobId(data.job_profile_id || "");
+        setSelectedResumeId(data.resume_id || "");
+        if (data.duration_minutes) {
+          setSelectedDuration(`${data.duration_minutes} Minutes`);
+        }
+        if (data.difficulty) setSelectedDifficulty(data.difficulty);
+        if (data.selected_jd_topics) setSelectedJobTopics(data.selected_jd_topics);
+        if (data.selected_resume_topics) setSelectedResumeTopics(data.selected_resume_topics);
+      }
+    }
+    if (sessionId) {
+      loadSession();
+    }
+  }, [sessionId, supabase]);
+
+  useEffect(() => {
+    async function loadSession() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('interview_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .single();
+        
+      if (data && data.user_id === user.id) {
+        setSelectedJobId(data.job_profile_id || "");
+        setSelectedResumeId(data.resume_id || "");
+        if (data.duration_minutes) {
+          setSelectedDuration(`${data.duration_minutes} Minutes`);
+        }
+        if (data.difficulty) setSelectedDifficulty(data.difficulty);
+        if (data.selected_jd_topics) setSelectedJobTopics(data.selected_jd_topics);
+        if (data.selected_resume_topics) setSelectedResumeTopics(data.selected_resume_topics);
+      }
+    }
+    if (sessionId) {
+      loadSession();
+    }
+  }, [sessionId, supabase]);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const availableResumeTopics = ["React", "Node.js", "System Design", "TypeScript", "Next.js"];
