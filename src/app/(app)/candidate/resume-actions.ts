@@ -98,9 +98,7 @@ export async function saveParsedResumeData(parsedData: any, storagePath: string)
 
     if (!profile) {
       // Insert new profile
-      console.log("Authenticated user.id before INSERT:", user.id);
-      console.log("Inserting candidate_profiles with user_id:", user.id);
-      
+                  
       const { error: insertError } = await supabase
         .from("candidate_profiles")
         .insert({

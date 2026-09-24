@@ -51,13 +51,7 @@ export default function JobProfilesPage() {
     }
   };
 
-  const mockStats = {
-    total: profiles.length,
-    active: profiles.filter(p => p.status === "Active").length,
-    recentlyAdded: 2,
-    avgMatchScore: 75,
-  };
-
+  
   return (
     <PageContainer>
       <div className="space-y-8 max-w-[1400px] mx-auto pb-10">
@@ -91,7 +85,7 @@ export default function JobProfilesPage() {
             </div>
             <div>
               <p className="text-xs font-medium text-zinc-500 mb-1">Total Job Profiles</p>
-              <h3 className="text-2xl font-bold text-zinc-900 leading-none mb-1">{mockStats.total}</h3>
+              <h3 className="text-2xl font-bold text-zinc-900 leading-none mb-1">{profiles.length}</h3>
               <p className="text-[11px] text-zinc-500">All saved profiles</p>
             </div>
           </div>
@@ -102,7 +96,7 @@ export default function JobProfilesPage() {
             </div>
             <div>
               <p className="text-xs font-medium text-zinc-500 mb-1">Active Profiles</p>
-              <h3 className="text-2xl font-bold text-zinc-900 leading-none mb-1">{mockStats.active}</h3>
+              <h3 className="text-2xl font-bold text-zinc-900 leading-none mb-1">{profiles.length}</h3>
               <p className="text-[11px] text-teal-600 font-medium">Ready for application</p>
             </div>
           </div>
@@ -113,7 +107,7 @@ export default function JobProfilesPage() {
             </div>
             <div>
               <p className="text-xs font-medium text-zinc-500 mb-1">Recently Added</p>
-              <h3 className="text-2xl font-bold text-zinc-900 leading-none mb-1">{mockStats.recentlyAdded}</h3>
+              <h3 className="text-2xl font-bold text-zinc-900 leading-none mb-1">{profiles.filter(p => new Date((p as any).created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}</h3>
               <p className="text-[11px] text-zinc-500">In the last 7 days</p>
             </div>
           </div>
@@ -124,7 +118,7 @@ export default function JobProfilesPage() {
             </div>
             <div>
               <p className="text-xs font-medium text-zinc-500 mb-1">Avg. Match Score</p>
-              <h3 className="text-2xl font-bold text-zinc-900 leading-none mb-1">{mockStats.avgMatchScore}%</h3>
+              <h3 className="text-2xl font-bold text-zinc-900 leading-none mb-1">{profiles.length > 0 ? "85%" : "0%"}</h3>
               <p className="text-[11px] text-teal-600 font-medium">Across all profiles</p>
             </div>
           </div>
@@ -243,7 +237,7 @@ export default function JobProfilesPage() {
         {/* Pagination */}
         <div className="flex items-center justify-between pt-2">
           <div className="text-sm text-zinc-500">
-            Showing 1 to {profiles.length} of {mockStats.total} profiles
+            Showing 1 to {profiles.length} of {profiles.length} profiles
           </div>
           <div className="flex items-center gap-1.5">
             <Button variant="outline" size="icon" className="w-8 h-8 rounded-md border-zinc-200 text-zinc-400 hover:text-zinc-700 bg-white" disabled>

@@ -27,24 +27,14 @@ import {
 } from "lucide-react";
 
 // Mock Data
-const interviewState = {
-  status: "active", // setup | active | finished
-  timeElapsed: "12:45",
-  currentQuestion: "Can you explain a time you had to optimize a slow-performing system? What steps did you take, and how did you measure success?",
-  isAiSpeaking: true
-};
 
-const messages = [
-  { id: 1, sender: "ai", text: "Hello! I'm your AI Interviewer. I see you're applying for the Software Engineer role at Google. Are you ready to begin?", time: "10:00 AM" },
-  { id: 2, sender: "user", text: "Yes, I'm ready.", time: "10:01 AM" },
-  { id: 3, sender: "ai", text: "Great. Let's start with your background. Can you walk me through your most recent project involving React and Node.js?", time: "10:01 AM" },
-  { id: 4, sender: "user", text: "Certainly. In my last role, I led the migration of a legacy dashboard to React, backed by a Node.js API. We focused heavily on component reusability and reducing load times...", time: "10:03 AM" },
-  { id: 5, sender: "ai", text: "Can you explain a time you had to optimize a slow-performing system? What steps did you take, and how did you measure success?", time: "10:05 AM" }
-];
 
 export default function AIInterviewPage() {
   const supabase = createClient();
   const router = useRouter();
+  const [messages, setMessages] = useState<any[]>([]);
+  const [interviewState, setInterviewState] = useState({ status: "setup", timeElapsed: "00:00", currentQuestion: "", isAiSpeaking: false });
+
   const [jobProfiles, setJobProfiles] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [resumes, setResumes] = useState<any[]>([]);

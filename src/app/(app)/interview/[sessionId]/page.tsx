@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -31,25 +30,15 @@ import {
 } from "lucide-react";
 
 // Mock Data
-const interviewState = {
-  status: "active", // setup | active | finished
-  timeElapsed: "12:45",
-  currentQuestion: "Can you explain a time you had to optimize a slow-performing system? What steps did you take, and how did you measure success?",
-  isAiSpeaking: true
-};
 
-const messages = [
-  { id: 1, sender: "ai", text: "Hello! I'm your AI Interviewer. I see you're applying for the Software Engineer role at Google. Are you ready to begin?", time: "10:00 AM" },
-  { id: 2, sender: "user", text: "Yes, I'm ready.", time: "10:01 AM" },
-  { id: 3, sender: "ai", text: "Great. Let's start with your background. Can you walk me through your most recent project involving React and Node.js?", time: "10:01 AM" },
-  { id: 4, sender: "user", text: "Certainly. In my last role, I led the migration of a legacy dashboard to React, backed by a Node.js API. We focused heavily on component reusability and reducing load times...", time: "10:03 AM" },
-  { id: 5, sender: "ai", text: "Can you explain a time you had to optimize a slow-performing system? What steps did you take, and how did you measure success?", time: "10:05 AM" }
-];
 
 export default function AIInterviewPage({ params }: { params: { sessionId: string } }) {
   const { sessionId } = params;
   const supabase = createClient();
   const router = useRouter();
+  const [messages, setMessages] = useState<any[]>([]);
+  const [interviewState, setInterviewState] = useState({ status: "setup", timeElapsed: "00:00", currentQuestion: "", isAiSpeaking: false });
+
   const [jobProfiles, setJobProfiles] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [resumes, setResumes] = useState<any[]>([]);
@@ -369,7 +358,6 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
     }
   };
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const availableResumeTopics = ["React", "Node.js", "System Design", "TypeScript", "Next.js"];
   const [selectedResumeTopics, setSelectedResumeTopics] = useState<string[]>(["React", "Node.js", "System Design"]);
   
@@ -405,55 +393,6 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
     }
     loadJobs();
   }, []);
-
-  const handleStartInterview = async () => {
-    const newErrors: { [key: string]: string } = {};
-    if (!selectedJobId) newErrors.job = "Job Profile is required";
-    if (!selectedResumeId) newErrors.resume = "Resume is required";
-    if (!selectedDuration) newErrors.duration = "Duration is required";
-    if (!selectedDifficulty) newErrors.difficulty = "Difficulty is required";
-    if (selectedJobTopics.length === 0 && selectedResumeTopics.length === 0) {
-      newErrors.topics = "At least one topic (JD or Resume) must be selected";
-    }
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length === 0) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setErrors({ submit: "You must be logged in to start an interview." });
-          return;
-        }
-
-        const durationMinutes = parseInt(selectedDuration.split(" ")[0]) || 30;
-
-        const { data, error } = await supabase
-          .from("interview_sessions")
-          .insert({
-            user_id: user.id,
-            job_profile_id: selectedJobId,
-            resume_id: selectedResumeId,
-            duration_minutes: durationMinutes,
-            selected_jd_topics: selectedJobTopics,
-            selected_resume_topics: selectedResumeTopics,
-            difficulty: selectedDifficulty,
-            status: "created"
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error(error);
-          setErrors({ submit: "Failed to create interview session. Please try again." });
-        } else if (data) {
-          router.push(`/interview/${data.id}`);
-        }
-      } catch (err) {
-        console.error(err);
-        setErrors({ submit: "An unexpected error occurred." });
-      }
-    }
-  };
 
   const handleStartInterview = async () => {
     const newErrors: { [key: string]: string } = {};

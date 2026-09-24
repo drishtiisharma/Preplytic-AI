@@ -49,9 +49,7 @@ export function ResumeUploader({ existingStoragePath, variant = "outline", class
       const storagePath = user.id + "/" + resumeId + ".pdf";
       
       if (process.env.NODE_ENV === 'development') {
-        console.log("Authenticated User ID:", user.id);
-        console.log("Storage Path:", storagePath);
-      }
+                      }
       
       const { error: uploadError } = await supabase.storage
         .from("resumes")
@@ -88,8 +86,7 @@ export function ResumeUploader({ existingStoragePath, variant = "outline", class
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
         if (token) {
-          console.log("Triggering PDF parse...");
-          const parseRes = await fetch("http://localhost:8000/parse", {
+                    const parseRes = await fetch("http://localhost:8000/parse", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -103,8 +100,7 @@ export function ResumeUploader({ existingStoragePath, variant = "outline", class
           
           if (parseRes.ok) {
             const parseData = await parseRes.json();
-            console.log("Parse Success! Structured Data:", parseData.data);
-            
+                        
             // Save parsed data to DB
             const saveRes = await saveParsedResumeData(parseData.data, storagePath);
             if (!saveRes.success) {

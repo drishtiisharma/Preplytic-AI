@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-async function generateAIResponse(jobProfile: any, resumeData: any) {
+async function generateAIResponse(jobProfile: any, resumeData: any): Promise<any> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("LLM configuration missing. Please set OPENAI_API_KEY.");

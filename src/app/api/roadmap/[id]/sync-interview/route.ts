@@ -19,7 +19,7 @@ function validateRoadmap(roadmap: any) {
   }
 }
 
-async function generateAIResponse(preparedContext: any) {
+async function generateAIResponse(preparedContext: any): Promise<any> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("LLM configuration missing. Please set OPENAI_API_KEY.");
