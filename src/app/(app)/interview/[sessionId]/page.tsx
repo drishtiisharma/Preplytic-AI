@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -23,7 +25,9 @@ import {
   PhoneOff,
   Download,
   MessageSquare,
-  Play
+  Play,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 // Mock Data
@@ -53,9 +57,96 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
   const [selectedDuration, setSelectedDuration] = useState<string>("30 Minutes");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Hard");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
+  const [questionsLoading, setQuestionsLoading] = useState<boolean>(true);
+  const [questionsError, setQuestionsError] = useState<string>("");
+  const [responses, setResponses] = useState<any[]>([]);
+  const [answer, setAnswer] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string>("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  
+  useEffect(() => {
+    if (currentQ?.question_text && !existingResponse) {
+      fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: currentQ.question_text })
+      }).then(res => {
+         if (res.status === 501) {
+            console.warn("TTS configuration missing.");
+         } else if (res.ok) {
+            res.blob().then(blob => {
+               const audioUrl = URL.createObjectURL(blob);
+               const audio = new Audio(audioUrl);
+               // audio.play().catch(e => console.warn("Audio autoplay blocked"));
+            });
+         }
+      }).catch(console.error);
+    }
+  }, [currentQ?.question_text, existingResponse]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        setIsProcessingVoice(true);
+        try {
+          const formData = new FormData();
+          formData.append('audio', audioBlob);
+          const res = await fetch('/api/stt', { method: 'POST', body: formData });
+          if (res.status === 501) {
+             setSubmitError("STT configuration missing. Please set STT_API_KEY in environment.");
+             setAnswer("Simulated transcript since STT config is missing.");
+          } else {
+             const data = await res.json();
+             if (data.transcript) {
+                setAnswer(data.transcript);
+             }
+          }
+        } catch (e) {
+           setSubmitError("Failed to process audio.");
+        } finally {
+           setIsProcessingVoice(false);
+        }
+      };
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+    } catch (err) {
+      console.error(err);
+      setSubmitError("Microphone access denied.");
+    }
+  };
+  
+  const stopRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+    }
+  };
+
+  const [isCompleting, setIsCompleting] = useState<boolean>(false);
+  const [isCompleting, setIsCompleting] = useState<boolean>(false);
+  const [responses, setResponses] = useState<any[]>([]);
+  const [answer, setAnswer] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string>("");
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
+  const [questionsLoading, setQuestionsLoading] = useState<boolean>(true);
+  const [questionsError, setQuestionsError] = useState<string>("");
 
   useEffect(() => {
-    async function loadSession() {
+    async function loadSessionAndQuestions() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
@@ -75,14 +166,120 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
         if (data.selected_jd_topics) setSelectedJobTopics(data.selected_jd_topics);
         if (data.selected_resume_topics) setSelectedResumeTopics(data.selected_resume_topics);
       }
+
+      setQuestionsLoading(true);
+      const { data: qData, error: qError } = await supabase
+        .from('interview_questions')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
+        
+      if (qError) {
+        setQuestionsError("Failed to load questions.");
+      } else if (qData) {
+        setQuestions(qData);
+      }
+      setQuestionsLoading(false);
+
+      const { data: rData } = await supabase
+        .from('interview_responses')
+        .select('*')
+        .eq('session_id', sessionId);
+      if (rData) setResponses(rData);
     }
     if (sessionId) {
-      loadSession();
+      loadSessionAndQuestions();
     }
   }, [sessionId, supabase]);
 
+  const currentQ = questions[currentQuestionIndex];
+  const existingResponse = responses.find(r => r.question_id === currentQ?.id);
+
   useEffect(() => {
-    async function loadSession() {
+    if (existingResponse) {
+      setAnswer(existingResponse.response_text || "");
+    } else {
+      setAnswer("");
+    }
+  }, [currentQuestionIndex, existingResponse]);
+
+  const completeInterview = async () => {
+    setIsCompleting(true);
+    setSubmitError("");
+    
+    const { error } = await supabase
+      .from('interview_sessions')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', sessionId);
+      
+    if (error) {
+      console.error(error);
+      setSubmitError("Failed to complete interview.");
+      setIsCompleting(false);
+    } else {
+      router.push(`/interview/${sessionId}/report`);
+    }
+  };
+
+  const completeInterview = async () => {
+    setIsCompleting(true);
+    setSubmitError("");
+    
+    const { error } = await supabase
+      .from('interview_sessions')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', sessionId);
+      
+    if (error) {
+      console.error(error);
+      setSubmitError("Failed to complete interview.");
+      setIsCompleting(false);
+    } else {
+      router.push(`/interview/${sessionId}/report`);
+    }
+  };
+
+  const handleAnswerSubmit = async () => {
+    if (!currentQ || !answer.trim()) return;
+    
+    setIsSubmitting(true);
+    setSubmitError("");
+    
+    const { data, error } = await supabase
+      .from('interview_responses')
+      .insert({
+        session_id: sessionId,
+        question_id: currentQ.id,
+        response_text: answer
+      })
+      .select()
+      .single();
+      
+    if (error) {
+      console.error(error);
+      setSubmitError("Failed to save answer.");
+    } else if (data) {
+      setResponses(prev => [...prev, data]);
+      setAnswer("");
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+        setIsSubmitting(false);
+      } else {
+        await completeInterview();
+      }
+    } else {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    async function loadSessionAndQuestions() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
@@ -102,11 +299,75 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
         if (data.selected_jd_topics) setSelectedJobTopics(data.selected_jd_topics);
         if (data.selected_resume_topics) setSelectedResumeTopics(data.selected_resume_topics);
       }
+
+      setQuestionsLoading(true);
+      const { data: qData, error: qError } = await supabase
+        .from('interview_questions')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
+        
+      if (qError) {
+        setQuestionsError("Failed to load questions.");
+      } else if (qData) {
+        setQuestions(qData);
+      }
+      setQuestionsLoading(false);
+
+      const { data: rData } = await supabase
+        .from('interview_responses')
+        .select('*')
+        .eq('session_id', sessionId);
+      if (rData) setResponses(rData);
     }
     if (sessionId) {
-      loadSession();
+      loadSessionAndQuestions();
     }
   }, [sessionId, supabase]);
+
+  const currentQ = questions[currentQuestionIndex];
+  const existingResponse = responses.find(r => r.question_id === currentQ?.id);
+
+  useEffect(() => {
+    if (existingResponse) {
+      setAnswer(existingResponse.response_text || "");
+    } else {
+      setAnswer("");
+    }
+  }, [currentQuestionIndex, existingResponse]);
+
+  const handleAnswerSubmit = async () => {
+    if (!currentQ || !answer.trim()) return;
+    
+    setIsSubmitting(true);
+    setSubmitError("");
+    
+    const { data, error } = await supabase
+      .from('interview_responses')
+      .insert({
+        session_id: sessionId,
+        question_id: currentQ.id,
+        response_text: answer
+      })
+      .select()
+      .single();
+      
+    if (error) {
+      console.error(error);
+      setSubmitError("Failed to save answer.");
+    } else if (data) {
+      setResponses(prev => [...prev, data]);
+      setAnswer("");
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+        setIsSubmitting(false);
+      } else {
+        await completeInterview();
+      }
+    } else {
+      setIsSubmitting(false);
+    }
+  };
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const availableResumeTopics = ["React", "Node.js", "System Design", "TypeScript", "Next.js"];
@@ -442,16 +703,35 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
                 </div>
 
                 <div className="flex items-center justify-center gap-4">
-                  <Button variant="outline" size="icon" className="w-14 h-14 rounded-2xl border-slate-200 text-slate-600 hover:bg-slate-50 bg-white">
-                    <Mic className="w-5 h-5" />
-                  </Button>
-                  <Button variant="destructive" className="h-14 px-8 rounded-2xl font-bold shadow-md shadow-red-500/20">
+                  <Button 
+                      variant={isRecording ? "default" : "outline"}
+                      size="icon" 
+                      className={`w-14 h-14 rounded-2xl border-slate-200 ${isRecording ? "bg-red-500 hover:bg-red-600 text-white animate-pulse" : "text-slate-600 hover:bg-slate-50 bg-white"}`}
+                      onClick={isRecording ? stopRecording : startRecording}
+                      disabled={isProcessingVoice || isSubmitting}
+                    >
+                      {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                    </Button>
+                  {answer && !existingResponse && (
+                      <Button 
+                        onClick={handleAnswerSubmit} 
+                        disabled={isSubmitting || isProcessingVoice}
+                        className="h-14 px-8 rounded-2xl font-bold shadow-md bg-teal-600 hover:bg-teal-700 text-white"
+                      >
+                        {isSubmitting ? "Evaluating..." : "Submit Answer"}
+                      </Button>
+                    )}
+                    
+                    <Button onClick={completeInterview} variant="destructive" className="h-14 px-8 rounded-2xl font-bold shadow-md shadow-red-500/20">
                     <PhoneOff className="w-5 h-5 mr-2" />
                     End Call
                   </Button>
                   <Button variant="outline" size="icon" className="w-14 h-14 rounded-2xl border-slate-200 text-slate-600 hover:bg-slate-50 bg-white">
                     <Volume2 className="w-5 h-5" />
                   </Button>
+                
+                  {submitError && <p className="text-red-500 text-sm mt-4 text-center">{submitError}</p>}
+                  {isProcessingVoice && <p className="text-teal-600 text-sm mt-4 text-center animate-pulse">Processing Voice Transcript...</p>}
                 </div>
               </div>
             </Card>

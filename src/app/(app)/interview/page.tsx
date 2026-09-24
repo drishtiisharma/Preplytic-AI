@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useRouter } from "next/navigation";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { 
@@ -46,15 +45,12 @@ const messages = [
 export default function AIInterviewPage() {
   const supabase = createClient();
   const router = useRouter();
-  const router = useRouter();
   const [jobProfiles, setJobProfiles] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [resumes, setResumes] = useState<any[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string>("");
   const [selectedDuration, setSelectedDuration] = useState<string>("30 Minutes");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Hard");
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const availableResumeTopics = ["React", "Node.js", "System Design", "TypeScript", "Next.js"];
   const [selectedResumeTopics, setSelectedResumeTopics] = useState<string[]>(["React", "Node.js", "System Design"]);
@@ -91,55 +87,6 @@ export default function AIInterviewPage() {
     }
     loadJobs();
   }, []);
-
-  const handleStartInterview = async () => {
-    const newErrors: { [key: string]: string } = {};
-    if (!selectedJobId) newErrors.job = "Job Profile is required";
-    if (!selectedResumeId) newErrors.resume = "Resume is required";
-    if (!selectedDuration) newErrors.duration = "Duration is required";
-    if (!selectedDifficulty) newErrors.difficulty = "Difficulty is required";
-    if (selectedJobTopics.length === 0 && selectedResumeTopics.length === 0) {
-      newErrors.topics = "At least one topic (JD or Resume) must be selected";
-    }
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length === 0) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setErrors({ submit: "You must be logged in to start an interview." });
-          return;
-        }
-
-        const durationMinutes = parseInt(selectedDuration.split(" ")[0]) || 30;
-
-        const { data, error } = await supabase
-          .from("interview_sessions")
-          .insert({
-            user_id: user.id,
-            job_profile_id: selectedJobId,
-            resume_id: selectedResumeId,
-            duration_minutes: durationMinutes,
-            selected_jd_topics: selectedJobTopics,
-            selected_resume_topics: selectedResumeTopics,
-            difficulty: selectedDifficulty,
-            status: "created"
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error(error);
-          setErrors({ submit: "Failed to create interview session. Please try again." });
-        } else if (data) {
-          router.push(`/interview/${data.id}`);
-        }
-      } catch (err) {
-        console.error(err);
-        setErrors({ submit: "An unexpected error occurred." });
-      }
-    }
-  };
 
   const handleStartInterview = async () => {
     const newErrors: { [key: string]: string } = {};

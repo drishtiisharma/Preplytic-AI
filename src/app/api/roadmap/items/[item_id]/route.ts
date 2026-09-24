@@ -29,23 +29,25 @@ export async function PATCH(
     // Apply constraints
     if (progress !== undefined) {
       progress = Math.max(0, Math.min(100, Number(progress)));
-      if (progress === 100) status = "completed";
-      // If progress is not 100 and status was completed, maybe they want to reopen it
-      if (progress < 100 && status === "completed") status = "in_progress";
+      if (progress === 100) {
+        status = "completed";
+      }
     }
 
     if (status !== undefined) {
       if (!["not_started", "in_progress", "completed"].includes(status)) {
         return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
       }
-      if (status === "completed") progress = 100;
+      if (status === "completed") {
+        progress = 100;
+      }
     }
 
     // Verify ownership: We need to check if the item belongs to a roadmap owned by the user.
     // We can do this efficiently by querying the item and joining its parents.
     const { data: existingItem, error: fetchError } = await supabase
       .from("roadmap_items")
-      .select("id, roadmap_versions(roadmaps(user_id))")
+      .select("id, status, progress, roadmap_versions(roadmaps(user_id))")
       .eq("id", itemId)
       .single();
 

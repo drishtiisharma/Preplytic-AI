@@ -24,46 +24,34 @@ Output the result ONLY as a valid JSON object matching this schema:
 }
 Do not include markdown blocks or any other text outside the JSON.`;
 
+
+function validateRoadmap(roadmap: any) {
+  if (typeof roadmap.readiness_score !== 'number' || roadmap.readiness_score < 0 || roadmap.readiness_score > 100) throw new Error("Invalid readiness_score");
+  if (typeof roadmap.estimated_weeks !== 'number' || roadmap.estimated_weeks <= 0) throw new Error("Invalid estimated_weeks");
+  if (typeof roadmap.hours_per_week !== 'number' || roadmap.hours_per_week <= 0) throw new Error("Invalid hours_per_week");
+  if (typeof roadmap.summary !== 'string' || !roadmap.summary.trim()) throw new Error("Invalid summary");
+  if (!Array.isArray(roadmap.focus_skills) || roadmap.focus_skills.length === 0) throw new Error("Invalid focus_skills");
+  if (!Array.isArray(roadmap.phases) || roadmap.phases.length === 0) throw new Error("Invalid phases");
+  
+  for (const phase of roadmap.phases) {
+    if (typeof phase.title !== 'string') throw new Error("Phase missing title");
+    if (typeof phase.description !== 'string') throw new Error("Phase missing description");
+    if (typeof phase.week_start !== 'number' || typeof phase.week_end !== 'number') throw new Error("Phase missing weeks");
+    if (!['high', 'medium', 'low'].includes(phase.priority)) throw new Error("Invalid phase priority");
+    if (!Array.isArray(phase.skills) || !Array.isArray(phase.resources)) throw new Error("Phase missing skills/resources");
+  }
+}
+
 async function generateAIResponse(jobProfile: any, resumeData: any) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured.");
+    throw new Error("LLM configuration missing. Please set OPENAI_API_KEY.");
   }
-
-  const userPrompt = `Job Profile:
-${JSON.stringify(jobProfile, null, 2)}
-
-Parsed Resume Data:
-${JSON.stringify(resumeData, null, 2)}
-
-Generate the JSON roadmap.`;
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.7,
-      response_format: { type: "json_object" }
-    })
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    console.error("OpenAI API Error:", err);
-    throw new Error("Failed to generate roadmap from AI service.");
-  }
-
-  const data = await response.json();
-  const content = data.choices[0].message.content;
-  return JSON.parse(content);
+  
+  // As per instructions: "LLM/API is NOT integrated yet: do not call any AI API. 
+  // Keep generation behind a small service/function boundary; if generation is unavailable, 
+  // return a clear configuration error instead of inserting fake data."
+  throw new Error("AI API integration is not fully configured yet. Please configure the LLM backend.");
 }
 
 export async function POST(request: Request) {
@@ -119,19 +107,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, data: existingRoadmap, source: "cache" });
     }
 
-    // 4. To get parsed resume data
-    const resumeData = {
-       fileName: resumeRecord.file_name,
-       fileSize: resumeRecord.file_size,
-       uploadedAt: resumeRecord.uploaded_at
+    // 4. To get parsed resume data & candidate profile
+    const { data: candidateProfile } = await supabase
+      .from("candidate_profiles")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("resume_record_id", resume_record_id)
+      .single();
+
+    const preparedContext = {
+       jobDescription: jobProfile.description || jobProfile.title,
+       resumeContent: candidateProfile ? candidateProfile.parsed_content : "No parsed content available",
+       skills: candidateProfile ? candidateProfile.skills : [],
+       existingSkillGaps: [], // To be populated if previous interview gaps exist
     };
 
     // 5. Call AI Service
     let generatedRoadmap;
     try {
-      generatedRoadmap = await generateAIResponse(jobProfile, resumeData);
+      generatedRoadmap = await generateAIResponse(preparedContext, null);
+      validateRoadmap(generatedRoadmap);
     } catch (error: any) {
-      return NextResponse.json({ error: error.message || "AI generation failed" }, { status: 500 });
+      return NextResponse.json({ error: error.message || "AI generation failed" }, { status: 501 });
     }
 
     // 6. Insert into Supabase
@@ -145,7 +142,8 @@ export async function POST(request: Request) {
         estimated_weeks: generatedRoadmap.estimated_weeks,
         hours_per_week: generatedRoadmap.hours_per_week,
         summary: generatedRoadmap.summary,
-        focus_skills: generatedRoadmap.focus_skills
+        focus_skills: generatedRoadmap.focus_skills,
+        current_version: 1
       })
       .select()
       .single();

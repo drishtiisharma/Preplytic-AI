@@ -19,11 +19,10 @@ export async function GET(
       return NextResponse.json({ error: "Missing roadmap ID" }, { status: 400 });
     }
 
-    // Fetch roadmap and nested versions/items. RLS ensures we only get it if it belongs to the user.
-    // However, we explicitly check user_id to match the requirement.
+    // 1. Fetch roadmap and verify user_id
     const { data: roadmap, error: roadmapError } = await supabase
       .from("roadmaps")
-      .select("*, roadmap_versions(*, roadmap_items(*))")
+      .select("*")
       .eq("id", roadmapId)
       .eq("user_id", user.id)
       .single();
@@ -31,8 +30,27 @@ export async function GET(
     if (roadmapError || !roadmap) {
       return NextResponse.json({ error: "Roadmap not found or access denied." }, { status: 404 });
     }
+    
+    // 2. Fetch current roadmap_versions using current_version -> all roadmap_items for that version
+    const { data: currentVersion, error: versionError } = await supabase
+      .from("roadmap_versions")
+      .select("*, roadmap_items(*)")
+      .eq("roadmap_id", roadmapId)
+      .eq("version_number", roadmap.current_version)
+      .single();
 
-    return NextResponse.json({ success: true, data: roadmap });
+    if (versionError && versionError.code !== 'PGRST116') {
+      console.error("Version error:", versionError);
+      return NextResponse.json({ error: "Failed to fetch roadmap version." }, { status: 500 });
+    }
+
+    // Return complete saved roadmap
+    const completeRoadmap = {
+       ...roadmap,
+       roadmap_versions: currentVersion ? [currentVersion] : []
+    };
+
+    return NextResponse.json({ success: true, data: completeRoadmap });
 
   } catch (error: any) {
     console.error("Fetch roadmap error:", error);
