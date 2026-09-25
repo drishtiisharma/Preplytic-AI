@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, FileText, CheckCircle, AlertCircle } from "lucide-react";
-import PageContainer from "@/components/layout/PageContainer";
+import { PageContainer } from "@//components/layout/PageContainer";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -157,25 +157,95 @@ export default function InterviewReportPage({ params }: { params: { sessionId: s
         <Card className="border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
             <CardDescription>Overall Score</CardDescription>
-            <CardTitle className="text-4xl text-teal-600">{report.overall_score || "N/A"}</CardTitle>
+            <CardTitle className="text-4xl text-teal-600">{report.overall_score || 0}/100</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardDescription>Technical Score</CardDescription>
+            <CardTitle className="text-4xl text-blue-600">{report.technical_score || 0}/100</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardDescription>Communication</CardDescription>
+            <CardTitle className="text-4xl text-purple-600">{report.communication_score || 0}/100</CardTitle>
           </CardHeader>
         </Card>
       </div>
 
-      <Card className="border-slate-200 shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <Card className="border-slate-200 shadow-sm border-t-4 border-t-green-500">
+          <CardHeader>
+            <CardTitle className="text-xl">Strengths</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <ul className="list-disc pl-5 space-y-2 text-slate-700 dark:text-slate-300">
+               {(report.strengths || []).map((s: string, i: number) => <li key={i}>{s}</li>)}
+             </ul>
+          </CardContent>
+        </Card>
+        <Card className="border-slate-200 shadow-sm border-t-4 border-t-amber-500">
+          <CardHeader>
+            <CardTitle className="text-xl">Areas for Improvement</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <ul className="list-disc pl-5 space-y-2 text-slate-700 dark:text-slate-300">
+               {(report.weaknesses || []).map((s: string, i: number) => <li key={i}>{s}</li>)}
+             </ul>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-slate-200 shadow-sm mb-8">
         <CardHeader>
-          <CardTitle>Detailed Feedback</CardTitle>
+          <CardTitle>Interview Performance Summary</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-300">
-            {report.feedback_text ? (
-              <p className="whitespace-pre-wrap">{report.feedback_text}</p>
+            {report.topic_analysis?.interview_performance_summary ? (
+              <p className="whitespace-pre-wrap">{report.topic_analysis.interview_performance_summary}</p>
             ) : (
-              <p className="text-slate-400 italic">No detailed feedback available.</p>
+              <p className="text-slate-400 italic">No summary available.</p>
             )}
           </div>
         </CardContent>
       </Card>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+         <Card className="border-slate-200 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-xl">Job Specific Gaps</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <ul className="list-disc pl-5 space-y-2 text-slate-700 dark:text-slate-300">
+               {(report.topic_analysis?.job_specific_gaps || []).map((s: string, i: number) => <li key={i}>{s}</li>)}
+             </ul>
+          </CardContent>
+        </Card>
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-xl">Recommended Next Steps</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <ul className="list-disc pl-5 space-y-2 text-slate-700 dark:text-slate-300">
+               {(report.topic_analysis?.recommended_next_steps || []).map((s: string, i: number) => <li key={i}>{s}</li>)}
+             </ul>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-slate-200 shadow-sm mb-8 bg-teal-50/50 dark:bg-teal-900/10 border-teal-100 dark:border-teal-900">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-teal-800 dark:text-teal-300">
+            <CheckCircle className="w-5 h-5" /> Readiness Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-teal-900 dark:text-teal-200 whitespace-pre-wrap">{report.topic_analysis?.readiness_summary || "N/A"}</p>
+        </CardContent>
+      </Card>
+
     </PageContainer>
   );
 }

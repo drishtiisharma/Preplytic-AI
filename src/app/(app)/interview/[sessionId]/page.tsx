@@ -43,7 +43,7 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [resumes, setResumes] = useState<any[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string>("");
-  const [selectedDuration, setSelectedDuration] = useState<string>("30 Minutes");
+  const [numberOfQuestions, setNumberOfQuestions] = useState<string>("1");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Hard");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [questions, setQuestions] = useState<any[]>([]);
@@ -148,8 +148,8 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
       if (data && data.user_id === user.id) {
         setSelectedJobId(data.job_profile_id || "");
         setSelectedResumeId(data.resume_id || "");
-        if (data.duration_minutes) {
-          setSelectedDuration(`${data.duration_minutes} Minutes`);
+        if (data.number_of_questions) {
+          setNumberOfQuestions(`${data.number_of_questions}`);
         }
         if (data.difficulty) setSelectedDifficulty(data.difficulty);
         if (data.selected_jd_topics) setSelectedJobTopics(data.selected_jd_topics);
@@ -240,30 +240,123 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
     setIsSubmitting(true);
     setSubmitError("");
     
-    const { data, error } = await supabase
-      .from('interview_responses')
-      .insert({
-        session_id: sessionId,
-        question_id: currentQ.id,
-        response_text: answer
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      console.error(error);
-      setSubmitError("Failed to save answer.");
-    } else if (data) {
-      setResponses(prev => [...prev, data]);
-      setAnswer("");
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
-        setIsSubmitting(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: sData } = await supabase.from('interview_sessions').select('*').eq('id', sessionId).single();
+      const { data: jData } = await supabase.from('job_profiles').select('*').eq('id', sData.job_profile_id).single();
+      const { data: rData } = await supabase.from('resume_records').select('*').eq('id', sData.resume_id).single();
+
+      const response = await fetch("http://localhost:8000/generate/interview-evaluate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          question: currentQ.question_text,
+          answer: answer,
+          job_profile: jData,
+          resume_data: rData,
+          difficulty: sData.difficulty || "Medium"
+        })
+      });
+
+      let evaluation = null;
+      if (response.ok) {
+        const result = await response.json();
+        evaluation = result.evaluation;
       } else {
-        await completeInterview();
+        console.warn("Evaluation failed", await response.text());
       }
-    } else {
-      setIsSubmitting(false);
+
+      const { data, error } = await supabase
+        .from('interview_responses')
+        .insert({
+          session_id: sessionId,
+          question_id: currentQ.id,
+          response_text: answer,
+          evaluation: evaluation
+        })
+        .select()
+        .single();
+        
+      if (error) {
+        console.error(error);
+        setSubmitError("Failed to save answer.");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      let nextIndex = currentQuestionIndex;
+      if (data) {
+        setResponses(prev => [...prev, data]);
+        setAnswer("");
+        
+        // Follow-up generation
+        try {
+           const remainingQuestions = questions.length - 1 - currentQuestionIndex;
+           const followupResponse = await fetch("http://localhost:8000/generate/interview-followup", {
+             method: "POST",
+             headers: {
+               "Content-Type": "application/json",
+               "Authorization": `Bearer ${session?.access_token}`
+             },
+             body: JSON.stringify({
+               current_question: currentQ.question_text,
+               answer: answer,
+               evaluation: evaluation || {},
+               job_profile: jData,
+               resume_data: rData,
+               difficulty: sData.difficulty || "Medium",
+               remaining_questions: remainingQuestions
+             })
+           });
+           
+           if (followupResponse.ok) {
+             const fwResult = await followupResponse.json();
+             if (fwResult.followup && fwResult.followup.should_follow_up && fwResult.followup.question) {
+                // Insert follow up into DB
+                const { data: insertedQ } = await supabase
+                  .from("interview_questions")
+                  .insert({
+                    session_id: sessionId,
+                    question_text: fwResult.followup.question
+                  })
+                  .select()
+                  .single();
+                  
+                if (insertedQ) {
+                   // Insert into local state right after current question
+                   setQuestions(prev => {
+                      const newQ = [...prev];
+                      newQ.splice(currentQuestionIndex + 1, 0, insertedQ);
+                      return newQ;
+                   });
+                   // We added a question, so we are definitely not at the end
+                   setCurrentQuestionIndex(prev => prev + 1);
+                   setIsSubmitting(false);
+                   return; // Early return to prevent normal check
+                }
+             }
+           }
+        } catch (fwErr) {
+           console.error("Follow up error", fwErr);
+        }
+
+        // Normal check if we didn't insert a follow-up
+        if (currentQuestionIndex < questions.length - 1) {
+          setCurrentQuestionIndex(prev => prev + 1);
+          setIsSubmitting(false);
+        } else {
+          await completeInterview();
+        }
+      } else {
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+       console.error("Submit error", err);
+       setSubmitError("Failed to save answer.");
+       setIsSubmitting(false);
     }
   };
 
@@ -281,8 +374,8 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
       if (data && data.user_id === user.id) {
         setSelectedJobId(data.job_profile_id || "");
         setSelectedResumeId(data.resume_id || "");
-        if (data.duration_minutes) {
-          setSelectedDuration(`${data.duration_minutes} Minutes`);
+        if (data.number_of_questions) {
+          setNumberOfQuestions(`${data.number_of_questions}`);
         }
         if (data.difficulty) setSelectedDifficulty(data.difficulty);
         if (data.selected_jd_topics) setSelectedJobTopics(data.selected_jd_topics);
@@ -398,7 +491,7 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
     const newErrors: { [key: string]: string } = {};
     if (!selectedJobId) newErrors.job = "Job Profile is required";
     if (!selectedResumeId) newErrors.resume = "Resume is required";
-    if (!selectedDuration) newErrors.duration = "Duration is required";
+    if (!numberOfQuestions) newErrors.questions = "Number of questions is required";
     if (!selectedDifficulty) newErrors.difficulty = "Difficulty is required";
     if (selectedJobTopics.length === 0 && selectedResumeTopics.length === 0) {
       newErrors.topics = "At least one topic (JD or Resume) must be selected";
@@ -413,7 +506,7 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
           return;
         }
 
-        const durationMinutes = parseInt(selectedDuration.split(" ")[0]) || 30;
+        const questionsCount = parseInt(numberOfQuestions) || 1;
 
         const { data, error } = await supabase
           .from("interview_sessions")
@@ -421,7 +514,7 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
             user_id: user.id,
             job_profile_id: selectedJobId,
             resume_id: selectedResumeId,
-            duration_minutes: durationMinutes,
+            number_of_questions: questionsCount,
             selected_jd_topics: selectedJobTopics,
             selected_resume_topics: selectedResumeTopics,
             difficulty: selectedDifficulty,
@@ -493,17 +586,17 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                      <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Duration</label>
-                      <Select value={selectedDuration} onValueChange={setSelectedDuration}>
+                      <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Number of Questions</label>
+                      <Select value={numberOfQuestions} onValueChange={setNumberOfQuestions}>
                         <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl border-slate-100 dark:border-border h-[42px] shadow-none flex items-center gap-2 px-2.5">
                           <Clock className="w-4 h-4 text-slate-400 shrink-0" />
-                          <div className="flex-1 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300"><SelectValue placeholder="Select Duration" /></div>
+                          <div className="flex-1 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300"><SelectValue placeholder="Select Number of Questions" /></div>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="15 Minutes">15 Minutes</SelectItem>
-                          <SelectItem value="30 Minutes">30 Minutes</SelectItem>
-                          <SelectItem value="45 Minutes">45 Minutes</SelectItem>
-                          <SelectItem value="60 Minutes">60 Minutes</SelectItem>
+                          <SelectItem value="1">1 Question</SelectItem>
+                        <SelectItem value="3">3 Questions</SelectItem>
+                        <SelectItem value="5">5 Questions</SelectItem>
+                        <SelectItem value="10">10 Questions</SelectItem>
                         </SelectContent>
                   </Select>
                 </div>

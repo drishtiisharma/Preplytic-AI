@@ -20,14 +20,21 @@ function validateRoadmap(roadmap: any) {
 }
 
 async function generateAIResponse(preparedContext: any): Promise<any> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("LLM configuration missing. Please set OPENAI_API_KEY.");
-  }
+  const authHeader = "Bearer dummy";
+  const aiResponse = await fetch('http://localhost:8000/generate/roadmap-refinement', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': authHeader
+    },
+    body: JSON.stringify({
+      preparedContext: preparedContext
+    })
+  });
   
-  // As per instructions: "LLM/API is NOT integrated yet: do not call any AI API. 
-  // Keep future AI generation behind the existing service/function boundary."
-  throw new Error("AI API integration is not fully configured yet. Please configure the LLM backend.");
+  const data = await aiResponse.json();
+  if (!aiResponse.ok) throw new Error(data.detail || "Analysis failed");
+  return data.refined_roadmap;
 }
 
 export async function POST(
@@ -127,77 +134,80 @@ export async function POST(
     try {
       generatedRoadmap = await generateAIResponse(preparedContext);
       validateRoadmap(generatedRoadmap);
+      return NextResponse.json({ success: true, refined_roadmap: generatedRoadmap });
     } catch (error: any) {
       return NextResponse.json({ error: error.message || "AI generation failed" }, { status: 501 });
     }
-
-    // 7. Create v2 using the existing versioning workflow
-    // The prompt mentions inserting interview_session_id. We'll pass it if the column exists, 
-    // otherwise it might throw. Assuming the schema expects it if requested.
-    const { data: versionInsert, error: versionInsertError } = await supabase
-      .from("roadmap_versions")
-      .insert({
-        roadmap_id: roadmapId,
-        version_number: nextVersionNumber,
-        source: "interview",
-        interview_session_id: interview_session_id
-      })
-      .select()
-      .single();
-
-    if (versionInsertError) throw versionInsertError;
-
-    // 8. Create v2 items only from real available data
-    const itemsToInsert = generatedRoadmap.phases.map((phase: any) => ({
-      roadmap_version_id: versionInsert.id,
-      title: phase.title,
-      description: phase.description,
-      week_start: phase.week_start,
-      week_end: phase.week_end,
-      priority: phase.priority,
-      skills: phase.skills,
-      resources: phase.resources,
-      progress: 0,
-      status: "not_started"
-    }));
-
-    const { error: itemsError } = await supabase
-      .from("roadmap_items")
-      .insert(itemsToInsert);
-
-    if (itemsError) throw itemsError;
-
-    // 9. Update roadmaps.current_version to v2
-    const { error: roadmapUpdateError } = await supabase
-      .from("roadmaps")
-      .update({
-         current_version: nextVersionNumber,
-         readiness_score: generatedRoadmap.readiness_score,
-         estimated_weeks: generatedRoadmap.estimated_weeks,
-         hours_per_week: generatedRoadmap.hours_per_week,
-         summary: generatedRoadmap.summary,
-         focus_skills: generatedRoadmap.focus_skills
-      })
-      .eq("id", roadmapId);
-
-    if (roadmapUpdateError) throw roadmapUpdateError;
-
-    // Return the updated roadmap
-    const { data: finalRoadmap } = await supabase
-      .from("roadmaps")
-      .select("*, roadmap_versions(*, roadmap_items(*))")
-      .eq("id", roadmapId)
-      .eq("roadmap_versions.version_number", nextVersionNumber)
-      .single();
-
-    if (finalRoadmap) {
-       finalRoadmap.roadmap_versions = finalRoadmap.roadmap_versions.filter((v: any) => v.version_number === finalRoadmap.current_version);
-    }
-
-    return NextResponse.json({ success: true, data: finalRoadmap, source: "interview_sync" });
-
-  } catch (error: any) {
-    console.error("Roadmap interview sync error:", error);
-    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 });
-  }
+// 
+//     /*
+//     // 7. Create v2 using the existing versioning workflow
+//     // The prompt mentions inserting interview_session_id. We'll pass it if the column exists, 
+//     // otherwise it might throw. Assuming the schema expects it if requested.
+//     const { data: versionInsert, error: versionInsertError } = await supabase
+//       .from("roadmap_versions")
+//       .insert({
+//         roadmap_id: roadmapId,
+//         version_number: nextVersionNumber,
+//         source: "interview",
+//         interview_session_id: interview_session_id
+//       })
+//       .select()
+//       .single();
+// 
+//     if (versionInsertError) throw versionInsertError;
+// 
+//     // 8. Create v2 items only from real available data
+//     const itemsToInsert = generatedRoadmap.phases.map((phase: any) => ({
+//       roadmap_version_id: versionInsert.id,
+//       title: phase.title,
+//       description: phase.description,
+//       week_start: phase.week_start,
+//       week_end: phase.week_end,
+//       priority: phase.priority,
+//       skills: phase.skills,
+//       resources: phase.resources,
+//       progress: 0,
+//       status: "not_started"
+//     }));
+// 
+//     const { error: itemsError } = await supabase
+//       .from("roadmap_items")
+//       .insert(itemsToInsert);
+// 
+//     if (itemsError) throw itemsError;
+// 
+//     // 9. Update roadmaps.current_version to v2
+//     /*const { error: roadmapUpdateError } = await supabase
+//       .from("roadmaps")
+//       .update({
+//          current_version: nextVersionNumber,
+//          readiness_score: generatedRoadmap.readiness_score,
+//          estimated_weeks: generatedRoadmap.estimated_weeks,
+//          hours_per_week: generatedRoadmap.hours_per_week,
+//          summary: generatedRoadmap.summary,
+//          focus_skills: generatedRoadmap.focus_skills
+//       })
+//       .eq("id", roadmapId);
+// 
+//     if (roadmapUpdateError) throw roadmapUpdateError;
+// 
+//     // Return the updated roadmap
+//     const { data: finalRoadmap } = await supabase
+//       .from("roadmaps")
+//       .select("*, roadmap_versions(*, roadmap_items(*))")
+//       .eq("id", roadmapId)
+//       .eq("roadmap_versions.version_number", nextVersionNumber)
+//       .single();
+// 
+//     if (finalRoadmap) {
+//        finalRoadmap.roadmap_versions = finalRoadmap.roadmap_versions.filter((v: any) => v.version_number === finalRoadmap.current_version);
+//     }
+// 
+//     return NextResponse.json({ success: true, data: finalRoadmap, source: "interview_sync" });
+// 
+//   } catch (error: any) {
+//     console.error("Roadmap interview sync error:", error);
+//     return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 });
+//   }
+// */
 }

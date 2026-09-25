@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { ChevronRight, FileText, Mail, Users, PenTool, ExternalLink, RefreshCw } from "lucide-react";
 
 type JobProfile = {
@@ -15,9 +17,14 @@ type JobProfile = {
   company: string;
   location: string;
   type: string;
+  experience: string;
   job_description: string;
   required_skills: string;
   preferred_skills: string;
+  education: string;
+  responsibilities: string;
+  qualifications: string;
+  salary: string;
 };
 
 type ResumeRecord = {
@@ -25,6 +32,7 @@ type ResumeRecord = {
   file_name: string;
   file_size: number;
   uploaded_at: string;
+  parsed_data?: any;
 };
 
 type ApplicationMessage = {
@@ -35,6 +43,7 @@ type ApplicationMessage = {
 
 export default function QuickApplyPage() {
   const supabase = createClient();
+  const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(true);
   const [jobProfiles, setJobProfiles] = useState<JobProfile[]>([]);
@@ -49,6 +58,9 @@ export default function QuickApplyPage() {
 
   const [isGeneratingColdMail, setIsGeneratingColdMail] = useState(false);
   const [isGeneratingReferral, setIsGeneratingReferral] = useState(false);
+  const [isGeneratingOverview, setIsGeneratingOverview] = useState(false);
+  const [jobOverview, setJobOverview] = useState<string | null>(null);
+  const [candidateProfile, setCandidateProfile] = useState<any>(null);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -61,13 +73,27 @@ export default function QuickApplyPage() {
         supabase.from('resume_records').select('*').eq('user_id', userData.user.id).order('uploaded_at', { ascending: false })
       ]);
 
-      if (jobsRes.data) setJobProfiles(jobsRes.data);
-      if (resumesRes.data) setResumes(resumesRes.data);
-      
+      const jobs = jobsRes.data || [];
+      const resumesData = resumesRes.data || [];
+
+      if (resumesData.length === 0) {
+        toast.error("Enter candidate details first.");
+        router.push("/candidate");
+        return;
+      }
+
+      if (jobs.length === 0) {
+        toast.error("Create at least 1 job profile first.");
+        router.push("/job-profiles");
+        return;
+      }
+
+      setJobProfiles(jobs);
+      setResumes(resumesData);
       setIsLoading(false);
     }
     loadInitialData();
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     async function loadMessages() {
@@ -107,14 +133,121 @@ export default function QuickApplyPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   };
 
-  const handleGenerateColdMail = () => {
+  const handleGenerateColdMail = async () => {
     setIsGeneratingColdMail(true);
-    setTimeout(() => setIsGeneratingColdMail(false), 2000);
+    try {
+      const job = jobProfiles.find(j => j.id === selectedJobId);
+      const resume = resumes.find(r => r.id === selectedResumeId);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch("http://localhost:8000/generate/cold-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          job_profile: job,
+          resume_data: resume,
+          candidate_profile: candidateProfile
+        })
+      });
+      
+      if (!response.ok) throw new Error("Failed to generate");
+      
+      const result = await response.json();
+      
+      const newMsg: ApplicationMessage = {
+        id: result.id,
+        message_type: 'cold_mail',
+        content: result.content
+      };
+      
+      const { data: userData } = await supabase.auth.getUser();
+      await supabase.from('application_messages').insert({
+        id: result.id,
+        user_id: userData.user?.id,
+        job_profile_id: selectedJobId,
+        resume_id: selectedResumeId,
+        message_type: 'cold_mail',
+        content: result.content
+      });
+      
+      setColdMail(newMsg);
+      toast.success("Cold mail generated successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate cold mail");
+    } finally {
+      setIsGeneratingColdMail(false);
+    }
   };
 
-  const handleGenerateReferral = () => {
+  const handleGenerateOverview = () => {
+    setIsGeneratingOverview(true);
+    // TODO: Hook up to actual LLM API endpoint for Job Overview
+    setTimeout(() => {
+      setIsGeneratingOverview(false);
+      setJobOverview("This feature is ready for LLM integration. Once connected, a 1-paragraph summary of role expectations will appear here.");
+    }, 2000);
+  };
+
+  const handleGenerateReferral = async () => {
     setIsGeneratingReferral(true);
-    setTimeout(() => setIsGeneratingReferral(false), 2000);
+    try {
+      const job = jobProfiles.find(j => j.id === selectedJobId);
+      const resume = resumes.find(r => r.id === selectedResumeId);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      let linkedinUrl = "";
+      if (candidateProfile && candidateProfile.contact_details && candidateProfile.contact_details.linkedin) {
+          linkedinUrl = candidateProfile.contact_details.linkedin;
+      } else if (resume && resume.parsed_data && resume.parsed_data.contact && resume.parsed_data.contact.linkedin) {
+          linkedinUrl = resume.parsed_data.contact.linkedin;
+      }
+      
+      const response = await fetch("http://localhost:8000/generate/referral", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          job_profile: job,
+          resume_data: resume,
+          candidate_profile: candidateProfile,
+          linkedin_url: linkedinUrl
+        })
+      });
+      
+      if (!response.ok) throw new Error("Failed to generate");
+      
+      const result = await response.json();
+      
+      const newMsg: ApplicationMessage = {
+        id: result.id,
+        message_type: 'referral_message',
+        content: result.content
+      };
+      
+      const { data: userData } = await supabase.auth.getUser();
+      await supabase.from('application_messages').insert({
+        id: result.id,
+        user_id: userData.user?.id,
+        job_profile_id: selectedJobId,
+        resume_id: selectedResumeId,
+        message_type: 'referral_message',
+        content: result.content
+      });
+      
+      setReferralMessage(newMsg);
+      toast.success("Referral message generated successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate referral message");
+    } finally {
+      setIsGeneratingReferral(false);
+    }
   };
 
   if (isLoading) {
@@ -172,7 +305,7 @@ export default function QuickApplyPage() {
         <div className="flex flex-col lg:flex-row items-center gap-6 p-1">
           <div className="flex-1 w-full space-y-2">
             <label className="text-[13px] font-semibold text-slate-900 dark:text-slate-100 pl-1">Select Job Profile</label>
-            <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+            <Select value={selectedJobId} onValueChange={(val) => setSelectedJobId(val as string)}>
               <SelectTrigger className="w-full h-16 rounded-2xl border-slate-200 dark:border-border px-4 text-left shadow-sm">
                 <SelectValue placeholder="Select a saved job profile" />
               </SelectTrigger>
@@ -192,7 +325,7 @@ export default function QuickApplyPage() {
 
           <div className="flex-1 w-full space-y-2">
             <label className="text-[13px] font-semibold text-slate-900 dark:text-slate-100 pl-1">Select Resume</label>
-            <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
+            <Select value={selectedResumeId} onValueChange={(val) => setSelectedResumeId(val as string)}>
               <SelectTrigger className="w-full h-16 rounded-2xl border-slate-200 dark:border-border px-4 text-left shadow-sm">
                 <SelectValue placeholder="Select an uploaded resume" />
               </SelectTrigger>
@@ -220,20 +353,76 @@ export default function QuickApplyPage() {
           <>
             {/* Job Overview */}
             <Card className="rounded-2xl border-slate-200 shadow-sm p-6 bg-white dark:bg-card flex flex-col">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Job Overview</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm font-semibold text-slate-500 mb-1">Position</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-100">{selectedJob?.title} at {selectedJob?.company}</p>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Job Overview</h3>
+                <Button 
+                  onClick={handleGenerateOverview} 
+                  disabled={isGeneratingOverview} 
+                  variant="outline" 
+                  className="h-8 text-xs bg-slate-50 border-slate-200 text-slate-600 hover:text-teal-600"
+                >
+                  {isGeneratingOverview ? <RefreshCw className="w-3 h-3 mr-2 animate-spin" /> : <PenTool className="w-3 h-3 mr-2" />}
+                  Generate AI Overview
+                </Button>
+              </div>
+
+              {jobOverview && (
+                <div className="mb-6 p-4 bg-teal-50/50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/30 rounded-xl">
+                  <p className="text-[14px] text-teal-800 dark:text-teal-200 leading-relaxed">{jobOverview}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-500 mb-1">Location & Type</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-100">{selectedJob?.location} • {selectedJob?.type}</p>
-                </div>
-                <div className="md:col-span-2">
-                  <p className="text-sm font-semibold text-slate-500 mb-1">Required Skills</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-100">{selectedJob?.required_skills || "Not specified"}</p>
-                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
+                {selectedJob?.title && selectedJob?.company && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Position</p>
+                    <p className="text-[15px] font-medium text-slate-900 dark:text-slate-100">{selectedJob.title} at {selectedJob.company}</p>
+                  </div>
+                )}
+                
+                {(selectedJob?.location || selectedJob?.type) && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Location & Type</p>
+                    <p className="text-[15px] font-medium text-slate-900 dark:text-slate-100">
+                      {[selectedJob.location, selectedJob.type].filter(Boolean).join(" • ")}
+                    </p>
+                  </div>
+                )}
+                
+                {selectedJob?.experience && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Experience</p>
+                    <p className="text-[15px] font-medium text-slate-900 dark:text-slate-100">{selectedJob.experience}</p>
+                  </div>
+                )}
+
+                {selectedJob?.salary && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Salary</p>
+                    <p className="text-[15px] font-medium text-slate-900 dark:text-slate-100">{selectedJob.salary}</p>
+                  </div>
+                )}
+
+                {selectedJob?.education && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Education</p>
+                    <p className="text-[15px] font-medium text-slate-900 dark:text-slate-100 leading-relaxed">{selectedJob.education}</p>
+                  </div>
+                )}
+
+                {selectedJob?.required_skills && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Required Skills</p>
+                    <p className="text-[15px] font-medium text-slate-900 dark:text-slate-100 leading-relaxed">{selectedJob.required_skills}</p>
+                  </div>
+                )}
+
+                {selectedJob?.preferred_skills && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Preferred Skills</p>
+                    <p className="text-[15px] font-medium text-slate-900 dark:text-slate-100 leading-relaxed">{selectedJob.preferred_skills}</p>
+                  </div>
+                )}
               </div>
             </Card>
 

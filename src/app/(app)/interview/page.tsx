@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { 
   StopCircle,
@@ -39,28 +40,28 @@ export default function AIInterviewPage() {
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [resumes, setResumes] = useState<any[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string>("");
-  const [selectedDuration, setSelectedDuration] = useState<string>("30 Minutes");
+  const [numberOfQuestions, setNumberOfQuestions] = useState<string>("1");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Hard");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const availableResumeTopics = ["React", "Node.js", "System Design", "TypeScript", "Next.js"];
-  const [selectedResumeTopics, setSelectedResumeTopics] = useState<string[]>(["React", "Node.js", "System Design"]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  
+  const [topicSource, setTopicSource] = useState<"resume" | "jd">("resume");
+  
+  const [availableResumeTopics, setAvailableResumeTopics] = useState<string[]>([]);
+  const [selectedResumeTopics, setSelectedResumeTopics] = useState<string[]>([]);
   
   const toggleResumeTopic = (topic: string) => {
     setSelectedResumeTopics(prev => 
-      prev.includes(topic) 
-        ? prev.filter(t => t !== topic) 
-        : [...prev, topic]
+      prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]
     );
   };
   
-  const availableJobTopics = ["Scalability", "Algorithms", "Cloud Architecture", "System Design", "Microservices"];
-  const [selectedJobTopics, setSelectedJobTopics] = useState<string[]>(["Scalability", "Algorithms", "Cloud Architecture"]);
+  const [availableJobTopics, setAvailableJobTopics] = useState<string[]>([]);
+  const [selectedJobTopics, setSelectedJobTopics] = useState<string[]>([]);
   
   const toggleJobTopic = (topic: string) => {
     setSelectedJobTopics(prev => 
-      prev.includes(topic) 
-        ? prev.filter(t => t !== topic) 
-        : [...prev, topic]
+      prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]
     );
   };
 
@@ -68,21 +69,48 @@ export default function AIInterviewPage() {
     async function loadJobs() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const [jobsRes, resumesRes] = await Promise.all([
-        supabase.from("job_profiles").select("id, title, company").eq("user_id", user.id).order("created_at", { ascending: false }),
-        supabase.from("resume_records").select("id, file_name").eq("user_id", user.id).order("uploaded_at", { ascending: false })
+      const [jobsRes, resumesRes, profileRes] = await Promise.all([
+        supabase.from("job_profiles").select("id, title, company, required_skills").eq("user_id", user.id).order("created_at", { ascending: false }),
+        supabase.from("resume_records").select("id, file_name").eq("user_id", user.id).order("uploaded_at", { ascending: false }),
+        supabase.from("candidate_profiles").select("skills").eq("id", user.id).single()
       ]);
-      if (jobsRes.data) setJobProfiles(jobsRes.data);
-      if (resumesRes.data) setResumes(resumesRes.data);
+      
+      if (jobsRes.data) {
+        setJobProfiles(jobsRes.data);
+      }
+      if (resumesRes.data) {
+        setResumes(resumesRes.data);
+      }
+      if (profileRes.data && Array.isArray(profileRes.data.skills)) {
+        // Map string array of skills or extract name if they are objects
+        const skills = profileRes.data.skills.map((s: any) => typeof s === 'string' ? s : s.name).filter(Boolean);
+        setAvailableResumeTopics(skills);
+        setSelectedResumeTopics(skills); // Select all by default
+      }
     }
     loadJobs();
   }, []);
+
+  // Update JD topics when selected Job changes
+  useEffect(() => {
+    if (selectedJobId) {
+      const job = jobProfiles.find(j => j.id === selectedJobId);
+      if (job && job.required_skills) {
+        const skills = job.required_skills.split(',').map((s: string) => s.trim()).filter(Boolean);
+        setAvailableJobTopics(skills);
+        setSelectedJobTopics(skills); // Select all by default
+      } else {
+        setAvailableJobTopics([]);
+        setSelectedJobTopics([]);
+      }
+    }
+  }, [selectedJobId, jobProfiles]);
 
   const handleStartInterview = async () => {
     const newErrors: { [key: string]: string } = {};
     if (!selectedJobId) newErrors.job = "Job Profile is required";
     if (!selectedResumeId) newErrors.resume = "Resume is required";
-    if (!selectedDuration) newErrors.duration = "Duration is required";
+    if (!numberOfQuestions) newErrors.questions = "Number of questions is required";
     if (!selectedDifficulty) newErrors.difficulty = "Difficulty is required";
     if (selectedJobTopics.length === 0 && selectedResumeTopics.length === 0) {
       newErrors.topics = "At least one topic (JD or Resume) must be selected";
@@ -97,7 +125,7 @@ export default function AIInterviewPage() {
           return;
         }
 
-        const durationMinutes = parseInt(selectedDuration.split(" ")[0]) || 30;
+        const questionsCount = parseInt(numberOfQuestions) || 1;
 
         const { data, error } = await supabase
           .from("interview_sessions")
@@ -105,7 +133,7 @@ export default function AIInterviewPage() {
             user_id: user.id,
             job_profile_id: selectedJobId,
             resume_id: selectedResumeId,
-            duration_minutes: durationMinutes,
+            number_of_questions: questionsCount,
             selected_jd_topics: selectedJobTopics,
             selected_resume_topics: selectedResumeTopics,
             difficulty: selectedDifficulty,
@@ -163,7 +191,7 @@ export default function AIInterviewPage() {
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Target Job</label>
-                  <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                  <Select value={selectedJobId} onValueChange={(val) => setSelectedJobId(val as string)}>
                     <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl border-slate-100 dark:border-border h-11 shadow-none">
                       <SelectValue placeholder="Select Job Profile" />
                     </SelectTrigger>
@@ -177,17 +205,17 @@ export default function AIInterviewPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                      <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Duration</label>
-                      <Select value={selectedDuration} onValueChange={setSelectedDuration}>
+                      <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Number of Questions</label>
+                      <Select value={numberOfQuestions} onValueChange={setNumberOfQuestions}>
                         <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl border-slate-100 dark:border-border h-[42px] shadow-none flex items-center gap-2 px-2.5">
                           <Clock className="w-4 h-4 text-slate-400 shrink-0" />
-                          <div className="flex-1 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300"><SelectValue placeholder="Select Duration" /></div>
+                          <div className="flex-1 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300"><SelectValue placeholder="Select Number of Questions" /></div>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="15 Minutes">15 Minutes</SelectItem>
-                          <SelectItem value="30 Minutes">30 Minutes</SelectItem>
-                          <SelectItem value="45 Minutes">45 Minutes</SelectItem>
-                          <SelectItem value="60 Minutes">60 Minutes</SelectItem>
+                          <SelectItem value="1">1 Question</SelectItem>
+                        <SelectItem value="3">3 Questions</SelectItem>
+                        <SelectItem value="5">5 Questions</SelectItem>
+                        <SelectItem value="10">10 Questions</SelectItem>
                         </SelectContent>
                   </Select>
                 </div>
@@ -209,7 +237,7 @@ export default function AIInterviewPage() {
 
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Baseline Resume</label>
-                  <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
+                  <Select value={selectedResumeId} onValueChange={(val) => setSelectedResumeId(val as string)}>
                     <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl border-slate-100 dark:border-border h-11 shadow-none">
                       <SelectValue placeholder="Select Resume" />
                     </SelectTrigger>
@@ -222,10 +250,48 @@ export default function AIInterviewPage() {
                   {errors.resume && <p className="text-red-500 text-[11px] font-medium mt-1">{errors.resume}</p>}
                 </div>
 
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Topic Source</label>
+                  <Select value={topicSource} onValueChange={(val: any) => setTopicSource(val)}>
+                    <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl border-slate-100 dark:border-border h-11 shadow-none">
+                      <SelectValue placeholder="Select Topic Source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="resume">Resume Topics</SelectItem>
+                      <SelectItem value="jd">Job Description Topics</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
-                  <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Topics from JD</label>
+                  <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Available {topicSource === "resume" ? "Resume" : "JD"} Topics
+                  </label>
+                  
+                  {topicSource === "resume" && availableResumeTopics.length === 0 && (
+                    <p className="text-[12px] text-slate-500">No skills found in Candidate Profile.</p>
+                  )}
+                  {topicSource === "jd" && availableJobTopics.length === 0 && (
+                    <p className="text-[12px] text-slate-500">No required skills found in selected Job Profile.</p>
+                  )}
+
                   <div className="flex flex-wrap gap-1.5">
-                    {availableJobTopics.map(topic => {
+                    {topicSource === "resume" ? availableResumeTopics.map(topic => {
+                      const isSelected = selectedResumeTopics.includes(topic);
+                      return (
+                        <button 
+                          key={topic}
+                          onClick={() => toggleResumeTopic(topic)}
+                          className={`inline-flex items-center px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+                            isSelected 
+                              ? "bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 border-teal-100/50 dark:border-teal-900/30" 
+                              : "bg-slate-50 dark:bg-slate-800/50 text-slate-500 border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          {topic}
+                        </button>
+                      );
+                    }) : availableJobTopics.map(topic => {
                       const isSelected = selectedJobTopics.includes(topic);
                       return (
                         <button 
@@ -247,9 +313,18 @@ export default function AIInterviewPage() {
 
                 {errors.submit && <p className="text-red-500 text-[13px] font-medium mt-2 text-center">{errors.submit}</p>}
                 {errors.submit && <p className="text-red-500 text-[13px] font-medium mt-2 text-center">{errors.submit}</p>}
-                <Button onClick={handleStartInterview} className="w-full h-12 rounded-xl bg-teal-500 hover:bg-teal-600 text-white shadow-sm font-bold text-[14px] mt-2">
-                  <Play className="w-4 h-4 mr-2 fill-current" />
-                  Start Interview
+                <Button onClick={handleStartInterview} disabled={isGenerating} className="w-full h-12 rounded-xl bg-teal-500 hover:bg-teal-600 text-white shadow-sm font-bold text-[14px] mt-2">
+                  {isGenerating ? (
+                    <>
+                      <div className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Generating Questions...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 mr-2 fill-current" />
+                      Start Interview
+                    </>
+                  )}
                 </Button>
               </div>
             </Card>

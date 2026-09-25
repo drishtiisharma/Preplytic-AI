@@ -4,3 +4,8 @@ pypdf==3.17.1
 supabase==2.3.0
 python-dotenv==1.0.0
 pydantic==2.5.2
+google-genai
+groq
+mistralai
+tavily-python
+sentence-transformers

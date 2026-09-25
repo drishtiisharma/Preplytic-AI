@@ -23,8 +23,8 @@ import {
 
 type JobProfile = { id: string; title: string; company: string; };
 type ResumeRecord = { id: string; file_name: string; };
-type RoadmapItem = { id: string; title: string; description: string; week_start: number; week_end: number; progress: number; status: string; skills: string[]; resources: string[]; };
-type Roadmap = { id: string; readiness_score: number; estimated_weeks: number; hours_per_week: number; summary: string; focus_skills: string[]; roadmap_versions: { roadmap_items: RoadmapItem[] }[]; };
+type RoadmapItem = { id: string; title: string; description: string; week_start: number; week_end: number; progress: number; status: string; skills: string[]; resources: string[]; priority?: string; };
+type Roadmap = { id: string; job_profile_id?: string; resume_record_id?: string; current_version?: number; readiness_score: number; estimated_weeks: number; hours_per_week: number; summary: string; focus_skills: string[]; roadmap_versions: { roadmap_items: RoadmapItem[] }[]; is_refined?: boolean; };
 
 const getIcon = (index: number) => {
   const icons = [Code2, MonitorPlay, Database, Rocket];
@@ -54,6 +54,8 @@ export default function PreparationRoadmapPage() {
   
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [items, setItems] = useState<RoadmapItem[]>([]);
+  const [hasInterview, setHasInterview] = useState<string | null>(null);
+  const [isRefining, setIsRefining] = useState(false);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -72,6 +74,33 @@ export default function PreparationRoadmapPage() {
     }
     loadInitialData();
   }, []);
+
+
+  useEffect(() => {
+    async function checkInterview() {
+      if (!selectedJobId || !selectedResumeId) {
+        setHasInterview(null);
+        return;
+      }
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return;
+      const { data } = await supabase
+        .from('interview_sessions')
+        .select('id')
+        .eq('job_profile_id', selectedJobId)
+        .eq('resume_id', selectedResumeId)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (data) {
+        setHasInterview(data.id);
+      } else {
+        setHasInterview(null);
+      }
+    }
+    checkInterview();
+  }, [selectedJobId, selectedResumeId, supabase]);
 
   const handleGenerate = async () => {
     if (!selectedJobId || !selectedResumeId) {
@@ -115,6 +144,37 @@ export default function PreparationRoadmapPage() {
     }
   };
 
+
+  const handleRefine = async () => {
+    if (!roadmap || !hasInterview) return;
+    setError(null);
+    setIsRefining(true);
+    try {
+      const res = await fetch(`/api/roadmap/${roadmap.id}/sync-interview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interview_session_id: hasInterview })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Refinement failed.");
+      
+      // We expect the refined_roadmap schema returned directly for this test
+      if (data.refined_roadmap) {
+         setRoadmap({ ...roadmap, ...data.refined_roadmap, is_refined: true });
+         setItems(data.refined_roadmap.phases.map((p: any, i: number) => ({...p, id: `refined-${i}`})));
+      } else if (data.data) {
+         // Fallback if the backend actually persisted it
+         setRoadmap(data.data);
+         const activeVersion = data.data.roadmap_versions?.find((v: any) => v.version_number === data.data.current_version) || data.data.roadmap_versions?.[0];
+         setItems((activeVersion?.roadmap_items || []).sort((a: any, b: any) => a.week_start - b.week_start));
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   const updateItemStatus = async (itemId: string, newProgress: number, newStatus: string) => {
     // Optimistic UI update
     setItems(currentItems => currentItems.map(item => 
@@ -151,7 +211,14 @@ export default function PreparationRoadmapPage() {
         {/* Header & Controls */}
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Preparation Roadmap</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+              Preparation Roadmap
+              {roadmap?.is_refined && (
+                <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm font-bold rounded-full flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5" /> Interview Refined
+                </span>
+              )}
+            </h1>
             <p className="text-muted-foreground text-[15px] mt-1 max-w-2xl">
               Select a job profile and your resume to dynamically generate a targeted, step-by-step career readiness roadmap.
             </p>
@@ -163,7 +230,7 @@ export default function PreparationRoadmapPage() {
           <div className="flex flex-col lg:flex-row items-end gap-6">
             <div className="flex-1 w-full space-y-2">
               <label className="text-[13px] font-semibold text-slate-900 dark:text-slate-100 pl-1">Target Job Profile</label>
-              <Select value={selectedJobId} onValueChange={setSelectedJobId} disabled={isInitialLoading || isGenerating}>
+              <Select value={selectedJobId} onValueChange={(val) => setSelectedJobId(val as string)} disabled={isInitialLoading || isGenerating}>
                 <SelectTrigger className="w-full h-12 rounded-xl">
                   <SelectValue placeholder={isInitialLoading ? "Loading..." : "Select Job Profile"} />
                 </SelectTrigger>
@@ -176,7 +243,7 @@ export default function PreparationRoadmapPage() {
             </div>
             <div className="flex-1 w-full space-y-2">
               <label className="text-[13px] font-semibold text-slate-900 dark:text-slate-100 pl-1">Baseline Resume</label>
-              <Select value={selectedResumeId} onValueChange={setSelectedResumeId} disabled={isInitialLoading || isGenerating}>
+              <Select value={selectedResumeId} onValueChange={(val) => setSelectedResumeId(val as string)} disabled={isInitialLoading || isGenerating}>
                 <SelectTrigger className="w-full h-12 rounded-xl">
                   <SelectValue placeholder={isInitialLoading ? "Loading..." : "Select Resume"} />
                 </SelectTrigger>
@@ -195,6 +262,17 @@ export default function PreparationRoadmapPage() {
               {isGenerating ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Bot className="w-4 h-4 mr-2" />}
               {isGenerating ? "Generating Roadmap..." : roadmap ? "Re-Generate Roadmap" : "Generate Roadmap"}
             </Button>
+            {roadmap && hasInterview && (
+              <Button 
+                onClick={handleRefine} 
+                disabled={isRefining}
+                className="h-12 px-8 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold w-full lg:w-auto"
+              >
+                {isRefining ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                {isRefining ? "Refining..." : "Refine with Interview"}
+              </Button>
+            )}
+
           </div>
           {error && (
             <div className="mt-4 flex items-center gap-2 text-sm font-medium text-red-500 bg-red-50 dark:bg-red-950/40 p-3 rounded-lg border border-red-100 dark:border-red-900/50">
@@ -211,9 +289,17 @@ export default function PreparationRoadmapPage() {
             <p>Analyzing job requirements and identifying skill gaps.</p>
           </div>
         )}
+        {isRefining && (
+          <div className="text-center py-20 text-indigo-500 animate-pulse">
+            <Sparkles className="w-10 h-10 animate-pulse mx-auto text-indigo-500 mb-4" />
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Refining Roadmap...</h3>
+            <p className="text-slate-500">Injecting your technical interview performance insights.</p>
+          </div>
+        )}
+
 
         {/* Roadmap Display Area */}
-        {roadmap && !isGenerating && (
+        {roadmap && !isGenerating && !isRefining && (
           <>
             {/* Summary Card */}
             <Card className="rounded-3xl border-slate-200 shadow-sm p-6 bg-white dark:bg-card">
@@ -310,6 +396,7 @@ export default function PreparationRoadmapPage() {
                                   <div>
                                     <h3 className="text-[16px] font-bold text-slate-900 dark:text-white leading-tight">{stage.title}</h3>
                                     <p className="text-[13px] text-slate-500 mt-1">{stage.description}</p>
+<p className="text-[12px] font-bold text-teal-600 mt-2 capitalize">Priority: {stage.priority}</p>
                                   </div>
                                   
                                   <div className="flex items-center gap-4 shrink-0">
@@ -319,7 +406,7 @@ export default function PreparationRoadmapPage() {
                                     </div>
 
                                     <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
+                                      <DropdownMenuTrigger>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700">
                                           <ChevronDown className="w-5 h-5" />
                                         </Button>

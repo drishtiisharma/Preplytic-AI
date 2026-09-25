@@ -209,7 +209,7 @@ export default function JobProfilesPage() {
                     <td className="px-6 py-4 align-top text-right">
                       <div className="pt-0.5">
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                          <DropdownMenuTrigger>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-700">
                               <MoreVertical className="w-4 h-4" />
                             </Button>
