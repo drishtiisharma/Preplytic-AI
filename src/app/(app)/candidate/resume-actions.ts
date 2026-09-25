@@ -93,7 +93,7 @@ export async function saveParsedResumeData(parsedData: any, storagePath: string)
     const { data: profile } = await supabase
       .from("candidate_profiles")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("id", user.id)
       .maybeSingle();
 
     if (!profile) {
@@ -101,8 +101,9 @@ export async function saveParsedResumeData(parsedData: any, storagePath: string)
                   
       const { error: insertError } = await supabase
         .from("candidate_profiles")
-        .insert({
-          user_id: user.id,
+          .insert({
+            id: user.id,
+            user_id: user.id,
           name: parsedData.name || null,
           email: parsedData.email || null,
           phone: parsedData.phone || null,
@@ -137,7 +138,7 @@ export async function saveParsedResumeData(parsedData: any, storagePath: string)
         const { error: updateError } = await supabase
           .from("candidate_profiles")
           .update(updates)
-          .eq("user_id", user.id);
+          .eq("id", user.id);
         if (updateError) console.error("Update profile error:", updateError);
       }
     }

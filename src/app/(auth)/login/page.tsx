@@ -12,17 +12,39 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<{ email?: string; password?: string; submit?: string }>({});
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const supabase = createClient();
 
   const handleGoogleLogin = async () => {
-    localStorage.setItem("isLoggedIn", "true");
-    router.push("/dashboard");
+    try {
+      await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } });
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  const handleEmailLogin = (e: React.FormEvent) => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("isLoggedIn", "true");
-    router.push("/dashboard");
+    const newErrors: { email?: string; password?: string; submit?: string } = {};
+    if (!email) newErrors.email = "Email is required";
+    if (!password) newErrors.password = "Password is required";
+    
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    setIsLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setIsLoading(false);
+
+    if (error) {
+      setErrors({ submit: error.message });
+    } else {
+      router.push("/dashboard");
+    }
   };
 
   return (
@@ -55,7 +77,7 @@ export default function LoginPage() {
         </p>
         
         <form className="space-y-4" onSubmit={handleEmailLogin}>
-          <div className="space-y-2">
+          <div className="space-y-1">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Mail className="h-4 w-4 text-zinc-400" />
@@ -63,12 +85,15 @@ export default function LoginPage() {
               <Input 
                 type="email" 
                 placeholder="Email address" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="pl-10 h-11 bg-transparent border-zinc-200 dark:border-zinc-800 focus-visible:ring-teal-500 rounded-lg text-sm" 
               />
             </div>
+            {errors.email && <p className="text-[11px] text-red-500 pl-1">{errors.email}</p>}
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-1">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-4 w-4 text-zinc-400" />
@@ -76,6 +101,8 @@ export default function LoginPage() {
               <Input 
                 type={showPassword ? "text" : "password"} 
                 placeholder="Password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="pl-10 pr-10 h-11 bg-transparent border-zinc-200 dark:border-zinc-800 focus-visible:ring-teal-500 rounded-lg text-sm" 
               />
               <button 
@@ -86,6 +113,7 @@ export default function LoginPage() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {errors.password && <p className="text-[11px] text-red-500 pl-1">{errors.password}</p>}
           </div>
           
           <div className="flex items-center justify-between pt-1 pb-2">
@@ -103,8 +131,14 @@ export default function LoginPage() {
             </Link>
           </div>
           
-          <Button type="button" onClick={handleGoogleLogin} className="w-full h-11 bg-gradient-to-r from-teal-500 to-mint-400 hover:from-teal-600 hover:to-mint-500 text-white font-medium rounded-lg text-sm flex items-center justify-center shadow-md shadow-teal-500/20">
-            Login <span className="ml-1">→</span>
+          {errors.submit && (
+            <div className="p-3 rounded bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50">
+              <p className="text-xs text-red-600 dark:text-red-400 text-center">{errors.submit}</p>
+            </div>
+          )}
+
+          <Button type="submit" disabled={isLoading} className="w-full h-11 bg-gradient-to-r from-teal-500 to-mint-400 hover:from-teal-600 hover:to-mint-500 text-white font-medium rounded-lg text-sm flex items-center justify-center shadow-md shadow-teal-500/20">
+            {isLoading ? "Logging in..." : <>Login <span className="ml-1">→</span></>}
           </Button>
           
           <div className="relative py-4">

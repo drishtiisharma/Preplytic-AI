@@ -32,7 +32,7 @@ const navigation = [
 
 const secondaryNavigation = [
   { name: "Settings", href: "/settings", icon: Settings },
-  { name: "Account", href: "/account", icon: CircleUser },
+  
 ];
 
 export function Sidebar() {
@@ -129,26 +129,7 @@ export function Sidebar() {
             })}
           </nav>
           
-          {/* Upgrade to Pro Card */}
-          {!collapsed && (
-            <div className="mx-6 mt-6 rounded-2xl bg-[#f0fbf9] dark:bg-teal-950/30 p-4 border border-teal-100 dark:border-teal-900">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-teal-900 shadow-sm">
-                  <Sparkles className="h-5 w-5 text-teal-500" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-[13px] font-semibold text-teal-700 dark:text-teal-300">Upgrade to Pro</h4>
-                  <p className="text-[11px] text-teal-600/80 dark:text-teal-400/80 mt-0.5 leading-tight">Unlock advanced AI insights, more job matches & features.</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-teal-400 shrink-0" />
-              </div>
-            </div>
-          )}
-          {collapsed && (
-            <div className="mx-auto mt-6 flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0fbf9] dark:bg-teal-950/30 shadow-sm">
-              <Sparkles className="h-5 w-5 text-teal-500" />
-            </div>
-          )}
+          
         </div>
       </div>
     </div>

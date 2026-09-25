@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { Bell, Menu, User, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +28,21 @@ const navLinks = [
 
 export function TopNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
+  const [user, setUser] = useState<any>(null);
+  
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+    });
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [supabase]);
 
   return (
     <header className="sticky top-0 z-30 w-full shrink-0 bg-white/80 backdrop-blur-md border-b border-zinc-100 dark:bg-zinc-950/80 dark:border-zinc-800">
@@ -71,21 +89,29 @@ export function TopNav() {
             <DropdownMenu>
               <DropdownMenuTrigger render={
                 <Button variant="ghost" className="rounded-full p-1 pl-1 pr-3 flex items-center gap-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                  <div className="h-8 w-8 rounded-full bg-teal-500 flex items-center justify-center text-white shrink-0">
-                    <User className="h-4 w-4" />
+                  <div className="h-8 w-8 rounded-full bg-teal-500 flex items-center justify-center text-white shrink-0 overflow-hidden">
+                    {user?.user_metadata?.avatar_url ? (
+                      <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : user?.user_metadata?.full_name ? (
+                      <span className="text-sm font-medium">{user.user_metadata.full_name.charAt(0).toUpperCase()}</span>
+                    ) : (
+                      <User className="h-4 w-4" />
+                    )}
                   </div>
                   <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 hidden sm:block truncate max-w-[120px]">
-                    My Account
+                    {user?.user_metadata?.full_name || "My Account"}
                   </span>
                 </Button>
               } />
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile Settings</DropdownMenuItem>
-                <DropdownMenuItem>Support</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/settings')}>Settings</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600 focus:text-red-600">Logout</DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => {
+                  await supabase.auth.signOut();
+                  router.push('/');
+                }} className="text-red-600 focus:text-red-600">Logout</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 

@@ -10,11 +10,38 @@ import { updateCandidateProfile, CandidateProfile } from "@/app/(app)/candidate/
 
 interface EditProfileDialogProps {
   profile: CandidateProfile | null;
+  trigger?: React.ReactElement;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onSaveSuccess?: () => void;
 }
 
-export function EditProfileDialog({ profile }: EditProfileDialogProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function EditProfileDialog({ profile, trigger, open, onOpenChange, onSaveSuccess }: EditProfileDialogProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = open !== undefined ? open : internalIsOpen;
+  const setIsOpen = onOpenChange || setInternalIsOpen;
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sync when profile changes
+  React.useEffect(() => {
+    if (profile) {
+      setFormData({
+        name: profile.name || "",
+        email: profile.email || "",
+        phone: profile.phone || "",
+        location: profile.location || "",
+        linkedin_url: profile.linkedin_url || "",
+        github_url: profile.github_url || "",
+        current_role: profile.current_role || "",
+        summary: profile.summary || "",
+        skills: profile.skills || [],
+        experience: profile.experience || [],
+        education: profile.education || [],
+        certifications: profile.certifications || [],
+      });
+      setSkillsInput(profile.skills?.map((s: any) => typeof s === 'string' ? s : s?.name || '').join(", ") || "");
+    }
+  }, [profile]);
 
   // Form state initialized with existing profile values
   const [formData, setFormData] = useState({
@@ -23,13 +50,14 @@ export function EditProfileDialog({ profile }: EditProfileDialogProps) {
     phone: profile?.phone || "",
     location: profile?.location || "",
     linkedin_url: profile?.linkedin_url || "",
+      github_url: profile?.github_url || "",
     current_role: profile?.current_role || "",
     summary: profile?.summary || "",
     skills: profile?.skills || [],
     experience: profile?.experience || [],
     education: profile?.education || [],
     certifications: profile?.certifications || [],
-    availability: profile?.preferences?.availability || "",
+    
   });
 
   const [skillsInput, setSkillsInput] = useState(formData.skills.map((s: any) => typeof s === 'string' ? s : s?.name || '').join(", "));
@@ -51,13 +79,14 @@ export function EditProfileDialog({ profile }: EditProfileDialogProps) {
         certifications: formData.certifications,
         preferences: {
           ...(profile?.preferences || {}),
-          availability: formData.availability,
+          
         },
       };
 
       const result = await updateCandidateProfile(payload);
       if (result.success) {
         setIsOpen(false);
+        if (onSaveSuccess) onSaveSuccess();
       } else {
         alert("Failed to save profile: " + result.error);
       }
@@ -86,7 +115,7 @@ export function EditProfileDialog({ profile }: EditProfileDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger render={<Button className="h-10 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-medium shadow-sm"><Edit className="w-4 h-4 mr-2" />Edit Profile</Button>} />
+              {trigger ? <DialogTrigger render={trigger} /> : <DialogTrigger render={<Button className="h-10 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-medium shadow-sm"><Edit className="w-4 h-4 mr-2" />Edit Profile</Button>} />}
       
       <DialogContent className="w-full max-w-[95vw] sm:max-w-[750px] max-h-[90vh] overflow-y-auto p-6 sm:p-8 rounded-2xl">
         <DialogHeader className="mb-6">
@@ -120,6 +149,11 @@ export function EditProfileDialog({ profile }: EditProfileDialogProps) {
                 <label className="text-sm font-medium">LinkedIn URL</label>
                 <Input value={formData.linkedin_url} onChange={(e) => setFormData({...formData, linkedin_url: e.target.value})} placeholder="https://linkedin.com/in/..." />
               </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">GitHub URL</label>
+                <Input value={formData.github_url} onChange={(e) => setFormData({...formData, github_url: e.target.value})} placeholder="https://github.com/..." />
+              </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Current Role</label>
                 <Input value={formData.current_role} onChange={(e) => setFormData({...formData, current_role: e.target.value})} placeholder="e.g. Software Engineer" />
@@ -136,10 +170,7 @@ export function EditProfileDialog({ profile }: EditProfileDialogProps) {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Availability</label>
-              <Input value={formData.availability} onChange={(e) => setFormData({...formData, availability: e.target.value})} placeholder="e.g. 2 Weeks Notice, Immediate, etc." />
-            </div>
+            
           </div>
 
           {/* Skills */}

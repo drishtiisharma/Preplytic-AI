@@ -7,19 +7,82 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string; submit?: string }>({});
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const router = useRouter();
+  const supabase = createClient();
 
   const handleGoogleLogin = async () => {
-    const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
       },
     });
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: { name?: string; email?: string; password?: string; confirmPassword?: string; submit?: string } = {};
+    
+    if (!name) newErrors.name = "Name is required";
+    if (!email) newErrors.email = "Email is required";
+    
+    if (!password) {
+      newErrors.password = "Password is required";
+    } else {
+      if (password.length < 8) {
+        newErrors.password = "Password must be at least 8 characters";
+      } else if (!/[a-zA-Z]/.test(password)) {
+        newErrors.password = "Password must contain at least 1 alphabetic character";
+      } else if (!/\d/.test(password)) {
+        newErrors.password = "Password must contain at least 1 number";
+      } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        newErrors.password = "Password must contain at least 1 special character";
+      }
+    }
+    
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+    
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    setIsLoading(true);
+    const { data, error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        data: { full_name: name }
+      }
+    });
+    setIsLoading(false);
+
+    if (error) {
+      if (error.message.includes("User already registered") || error.status === 422 || error.message.includes("already exists")) {
+        setErrors({ submit: "Account already exists. Please log in." });
+      } else {
+        setErrors({ submit: error.message });
+      }
+    } else {
+      // Typically requires email verification
+      setErrors({ submit: "Success! Please check your email to verify your account." });
+      // If auto-login is allowed without confirmation:
+      if (data.session) {
+         router.push("/dashboard");
+      }
+    }
   };
 
   return (
@@ -56,8 +119,8 @@ export default function SignupPage() {
           Join Preplytic AI and take the first step towards your dream career.
         </p>
         
-        <form className="space-y-4">
-          <div className="space-y-2">
+        <form className="space-y-4" onSubmit={handleSignup}>
+          <div className="space-y-1">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <User className="h-4 w-4 text-zinc-400" />
@@ -65,25 +128,31 @@ export default function SignupPage() {
               <Input 
                 type="text" 
                 placeholder="Full Name" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="pl-10 h-11 bg-transparent border-zinc-200 dark:border-zinc-800 focus-visible:ring-teal-500 rounded-lg text-sm" 
               />
             </div>
+            {errors.name && <p className="text-[11px] text-red-500 pl-1">{errors.name}</p>}
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-1">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Mail className="h-4 w-4 text-zinc-400" />
               </div>
               <Input 
                 type="email" 
-                placeholder="Email Address" 
+                placeholder="Email Address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)} 
                 className="pl-10 h-11 bg-transparent border-zinc-200 dark:border-zinc-800 focus-visible:ring-teal-500 rounded-lg text-sm" 
               />
             </div>
+            {errors.email && <p className="text-[11px] text-red-500 pl-1">{errors.email}</p>}
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-1">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-4 w-4 text-zinc-400" />
@@ -91,6 +160,8 @@ export default function SignupPage() {
               <Input 
                 type={showPassword ? "text" : "password"} 
                 placeholder="Password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="pl-10 pr-10 h-11 bg-transparent border-zinc-200 dark:border-zinc-800 focus-visible:ring-teal-500 rounded-lg text-sm" 
               />
               <button 
@@ -101,9 +172,10 @@ export default function SignupPage() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {errors.password && <p className="text-[11px] text-red-500 pl-1">{errors.password}</p>}
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-1">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-4 w-4 text-zinc-400" />
@@ -111,6 +183,8 @@ export default function SignupPage() {
               <Input 
                 type={showConfirmPassword ? "text" : "password"} 
                 placeholder="Confirm Password" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 className="pl-10 pr-10 h-11 bg-transparent border-zinc-200 dark:border-zinc-800 focus-visible:ring-teal-500 rounded-lg text-sm" 
               />
               <button 
@@ -121,11 +195,23 @@ export default function SignupPage() {
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {errors.confirmPassword && <p className="text-[11px] text-red-500 pl-1">{errors.confirmPassword}</p>}
           </div>
           
+          {errors.submit && (
+            <div className="p-3 rounded bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
+              <p className={errors.submit.includes("Success") ? "text-xs text-teal-600 dark:text-teal-400 text-center" : "text-xs text-red-600 dark:text-red-400 text-center"}>{errors.submit}</p>
+              {errors.submit.includes("Account already exists") && (
+                <div className="mt-2 text-center">
+                   <Link href="/login" className="text-xs font-semibold text-teal-600 hover:underline">Go to Login →</Link>
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="pt-2">
-            <Button type="submit" className="w-full h-11 bg-gradient-to-r from-teal-500 to-mint-400 hover:from-teal-600 hover:to-mint-500 text-white font-medium rounded-lg text-sm flex items-center justify-center shadow-md shadow-teal-500/20">
-              Sign Up <span className="ml-1">→</span>
+            <Button type="submit" disabled={isLoading} className="w-full h-11 bg-gradient-to-r from-teal-500 to-mint-400 hover:from-teal-600 hover:to-mint-500 text-white font-medium rounded-lg text-sm flex items-center justify-center shadow-md shadow-teal-500/20">
+              {isLoading ? "Signing up..." : <>Sign Up <span className="ml-1">→</span></>}
             </Button>
           </div>
           

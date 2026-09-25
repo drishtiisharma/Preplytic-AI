@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { saveResumeRecord, deleteOldResume, saveParsedResumeData } from "@/app/(app)/candidate/resume-actions";
 
 interface ResumeUploaderProps {
@@ -13,9 +14,10 @@ interface ResumeUploaderProps {
   label?: string;
   icon?: React.ReactNode;
   existingStoragePath?: string | null;
+  onParseSuccess?: (parsedData: any, storagePath: string) => void;
 }
 
-export function ResumeUploader({ existingStoragePath, variant = "outline", className, label = "Upload New Resume", icon = <Upload className="w-4 h-4 mr-2" /> }: ResumeUploaderProps) {
+export function ResumeUploader({ existingStoragePath, variant = "outline", className, label = "Upload New Resume", icon = <Upload className="w-4 h-4 mr-2" /> , onParseSuccess }: ResumeUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -25,12 +27,12 @@ export function ResumeUploader({ existingStoragePath, variant = "outline", class
     if (!file) return;
 
     if (file.type !== "application/pdf") {
-      alert("Please upload a valid PDF file.");
+      toast.error("Please upload a valid PDF file.");
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) { // 10MB limit
-      alert("File is too large. Maximum size is 10MB.");
+      toast.error("File is too large. Maximum size is 10MB.");
       return;
     }
 
@@ -40,7 +42,7 @@ export function ResumeUploader({ existingStoragePath, variant = "outline", class
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        alert("Not authenticated.");
+        toast.error("Auth Error: You must be logged in to upload a resume.");
         return;
       }
 
@@ -60,7 +62,7 @@ export function ResumeUploader({ existingStoragePath, variant = "outline", class
 
       if (uploadError) {
         console.error("Storage upload error:", uploadError);
-        alert("Failed to upload resume to storage.");
+        toast.error("Storage Error: Failed to upload resume to storage.");
         return;
       }
 
@@ -72,7 +74,7 @@ export function ResumeUploader({ existingStoragePath, variant = "outline", class
       });
 
       if (!result.success) {
-        alert(result.error || "Failed to save resume record.");
+        toast.error("Database Error: " + (result.error || "Failed to save resume record."));
         return;
       }
 
@@ -101,13 +103,17 @@ export function ResumeUploader({ existingStoragePath, variant = "outline", class
           if (parseRes.ok) {
             const parseData = await parseRes.json();
                         
-            // Save parsed data to DB
-            const saveRes = await saveParsedResumeData(parseData.data, storagePath);
-            if (!saveRes.success) {
-              console.error("Failed to save parsed data:", saveRes.error);
+            if (onParseSuccess) {
+              onParseSuccess(parseData.data, storagePath);
             } else {
-              router.refresh();
-              alert("Resume uploaded and parsed successfully!");
+              // Save parsed data to DB
+              const saveRes = await saveParsedResumeData(parseData.data, storagePath);
+              if (!saveRes.success) {
+                console.error("Failed to save parsed data:", saveRes.error);
+              } else {
+                router.refresh();
+                toast.success("Resume uploaded successfully!");
+              }
             }
           } else {
             console.error("Parse failed:", await parseRes.text());
@@ -119,7 +125,7 @@ export function ResumeUploader({ existingStoragePath, variant = "outline", class
 
     } catch (err) {
       console.error(err);
-      alert("An unexpected error occurred.");
+      toast.error("Upload failed: An unexpected error occurred.");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
