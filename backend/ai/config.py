@@ -15,6 +15,8 @@ class AIConfig:
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     GROQ_TEXT_MODEL = os.getenv("GROQ_TEXT_MODEL", "openai/gpt-oss-120b")
     GROQ_STT_MODEL = os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
+    GROQ_ROADMAP_API_KEY = os.getenv("GROQ_ROADMAP_API_KEY")
+    GROQ_ROADMAP_MODEL = os.getenv("GROQ_ROADMAP_MODEL", "openai/gpt-oss-120b")
     
     # Mistral
     MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")

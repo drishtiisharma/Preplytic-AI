@@ -104,7 +104,15 @@ export async function POST(request: Request) {
       .single();
 
     if (existingRoadmap) {
-      return NextResponse.json({ success: true, data: existingRoadmap, source: "cache" });
+      const isDummy = existingRoadmap.summary?.includes('AI generation is disabled') || 
+                      (Array.isArray(existingRoadmap.focus_skills) && existingRoadmap.focus_skills.includes('Pending AI Generation')) || 
+                      (typeof existingRoadmap.focus_skills === 'string' && existingRoadmap.focus_skills.includes('Pending AI Generation'));
+      
+      if (!isDummy) {
+        return NextResponse.json({ success: true, data: existingRoadmap, source: "cache" });
+      }
+      // Delete dummy so we can replace it cleanly
+      await supabase.from('roadmaps').delete().eq('id', existingRoadmap.id);
     }
 
     // 4. To get parsed resume data & candidate profile
@@ -158,7 +166,7 @@ export async function POST(request: Request) {
     }
 
     const aiData = await aiResponse.json();
-    const generatedRoadmap = aiData.dummy_roadmap;
+    const generatedRoadmap = aiData.roadmap;
     
     // validateRoadmap(generatedRoadmap);
 
@@ -206,6 +214,7 @@ export async function POST(request: Request) {
       status: "not_started"
     }));
 
+    console.log("ITEMS TO INSERT:", itemsToInsert);
     const { error: itemsError } = await supabase
       .from("roadmap_items")
       .insert(itemsToInsert);

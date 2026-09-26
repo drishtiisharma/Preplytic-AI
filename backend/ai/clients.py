@@ -14,6 +14,11 @@ if AIConfig.GROQ_API_KEY:
 else:
     groq_client = None
 
+if AIConfig.GROQ_ROADMAP_API_KEY:
+    groq_roadmap_client = Groq(api_key=AIConfig.GROQ_ROADMAP_API_KEY)
+else:
+    groq_roadmap_client = None
+
 # Initialize Mistral
 from mistralai.client import Mistral
 if AIConfig.MISTRAL_API_KEY:

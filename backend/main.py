@@ -1,4 +1,5 @@
 import os
+import json
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -70,7 +71,7 @@ async def parse_endpoint(
         print("Parsing error:", e)
         raise HTTPException(status_code=500, detail="Failed to parse resume")
 
-from ai.clients import gemini_client, groq_client, mistral_client, tavily_client
+from ai.clients import gemini_client, groq_client, mistral_client, groq_roadmap_client, tavily_client
 from ai.config import AIConfig
 import uuid
 
@@ -493,38 +494,65 @@ async def generate_roadmap(req: RoadmapRequest, authorization: str = Header(None
         "additional_context": "Initial roadmap generation without prior interview gaps."
     }
     
-    # DO NOT call Mistral yet.
-    # Return a dummy payload matching the frontend schema so the app doesn't break.
-    return {
-        "success": True,
-        "prepared_context": clean_roadmap_context,
-        "dummy_roadmap": {
-            "readiness_score": 0,
-            "estimated_weeks": 4,
-            "hours_per_week": 10,
-            "summary": "AI generation is disabled. Prepared context successfully.",
-            "focus_skills": ["Pending AI Generation"],
-            "phases": [
-                {
-                    "title": "Setup",
-                    "description": "Waiting for AI integration.",
-                    "week_start": 1,
-                    "week_end": 1,
-                    "priority": "high",
-                    "skills": ["None"],
-                    "resources": ["None"]
-                }
-            ]
-        }
+    try:
+        if not groq_roadmap_client:
+            raise HTTPException(status_code=500, detail="Groq Roadmap client is not configured")
+
+        system_prompt = """You are an expert career coach and technical mentor. 
+Given a Job Description and a candidate's parsed Resume Data, your task is to generate a personalized learning roadmap.
+Output the result ONLY as a valid JSON object matching this schema:
+{
+  "readiness_score": <number 0-100>,
+  "estimated_weeks": <number>,
+  "hours_per_week": <number>,
+  "summary": "<string, overview of the candidate's gap and roadmap goal>",
+  "focus_skills": ["<string>", "<string>"],
+  "phases": [
+    {
+      "title": "<string>",
+      "description": "<string>",
+      "week_start": <number>,
+      "week_end": <number>,
+      "priority": "<high|medium|low>",
+      "skills": ["<string>"],
+      "resources": []
     }
+  ]
+}
+IMPORTANT: The 'resources' array for each phase MUST be empty []. Do not include markdown blocks or any other text outside the JSON."""
+
+        prompt = f"Adaptive Context: {json.dumps(clean_roadmap_context)}"
+        
+        resp_generate = groq_roadmap_client.chat.completions.create(
+            model=AIConfig.GROQ_ROADMAP_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        
+        roadmap_data = json.loads(resp_generate.choices[0].message.content.strip())
+        
+        for phase in roadmap_data.get("phases", []):
+            phase["resources"] = []
+            
+        return {
+            "success": True,
+            "prepared_context": clean_roadmap_context,
+            "roadmap": roadmap_data
+        }
+    except Exception as e:
+        print(f"Error in roadmap generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 class RefinementAnalysisRequest(BaseModel):
     preparedContext: dict
 
 @app.post("/generate/roadmap-refinement")
 async def generate_roadmap_refinement(req: RefinementAnalysisRequest):
     try:
-        if not mistral_client:
-            raise HTTPException(status_code=500, detail="Mistral is not configured")
+        if not groq_roadmap_client:
+            raise HTTPException(status_code=500, detail="Groq Roadmap client is not configured")
 
         # Step 1: Analysis
         system_prompt_analysis = """You are an expert career and learning coach.
@@ -546,8 +574,8 @@ Do NOT invent any findings. Base your analysis strictly on the provided context.
 
         analysis_prompt = f"Adaptive Context: {json.dumps(req.preparedContext)}"
 
-        resp_analysis = mistral_client.chat.complete(
-            model="mistral-small-latest",
+        resp_analysis = groq_roadmap_client.chat.completions.create(
+            model=AIConfig.GROQ_ROADMAP_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt_analysis},
                 {"role": "user", "content": analysis_prompt}
@@ -584,8 +612,8 @@ IMPORTANT: The 'resources' array for each phase MUST be empty []."""
 
         generate_prompt = f"Adaptive Context: {json.dumps(req.preparedContext)}\n\nRefinement Analysis: {json.dumps(analysis_data)}"
 
-        resp_generate = mistral_client.chat.complete(
-            model="mistral-small-latest",
+        resp_generate = groq_roadmap_client.chat.completions.create(
+            model=AIConfig.GROQ_ROADMAP_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt_generate},
                 {"role": "user", "content": generate_prompt}
