@@ -79,6 +79,20 @@ class GenerateRequest(BaseModel):
     resume_data: dict
     candidate_profile: dict = None
     linkedin_url: str = None
+async def _generate_with_retry(prompt: str):
+    for attempt in range(3):
+        try:
+            return gemini_client.models.generate_content(
+                model=AIConfig.GEMINI_TEXT_MODEL,
+                contents=prompt,
+            )
+        except Exception as e:
+            if "503" in str(e) or "UNAVAILABLE" in str(e):
+                if attempt < 2:
+                    await asyncio.sleep(2)
+                    continue
+                raise HTTPException(status_code=503, detail="Gemini is temporarily unavailable. Please try again.")
+            raise e
 
 @app.post("/generate/cold-email")
 async def generate_cold_email(req: GenerateRequest, authorization: str = Header(None)):
@@ -98,15 +112,15 @@ async def generate_cold_email(req: GenerateRequest, authorization: str = Header(
     """
     
     try:
-        response = gemini_client.models.generate_content(
-            model=AIConfig.GEMINI_TEXT_MODEL,
-            contents=prompt,
-        )
+        response = await _generate_with_retry(prompt)
+
         return {
             "id": str(uuid.uuid4()),
             "message_type": "cold_mail",
             "content": response.text.strip()
         }
+    except HTTPException:
+        raise
     except Exception as e:
         print("Generation error:", e)
         raise HTTPException(status_code=500, detail="Failed to generate cold email")
@@ -133,15 +147,15 @@ async def generate_referral(req: GenerateRequest, authorization: str = Header(No
          prompt += f"\nInclude a reference or link to the candidate's LinkedIn: {req.linkedin_url}"
     
     try:
-        response = gemini_client.models.generate_content(
-            model=AIConfig.GEMINI_TEXT_MODEL,
-            contents=prompt,
-        )
+        response = await _generate_with_retry(prompt)
+
         return {
             "id": str(uuid.uuid4()),
             "message_type": "referral_message",
             "content": response.text.strip()
         }
+    except HTTPException:
+        raise
     except Exception as e:
         print("Generation error:", e)
         raise HTTPException(status_code=500, detail="Failed to generate referral message")
@@ -191,8 +205,6 @@ async def generate_interview_questions(req: InterviewGenerateRequest, authorizat
     except Exception as e:
         print("Generation error:", e)
         raise HTTPException(status_code=500, detail="Failed to generate interview questions")
-
-
 class InterviewEvaluateRequest(BaseModel):
     question: str
     answer: str
@@ -447,8 +459,6 @@ async def generate_interview_report(req: InterviewReportRequest, authorization: 
     except Exception as e:
         print("Report Generation error:", e)
         raise HTTPException(status_code=500, detail="Failed to generate report")
-
-
 class RoadmapRequest(BaseModel):
     job_profile: dict
     candidate_profile: dict
@@ -507,8 +517,6 @@ async def generate_roadmap(req: RoadmapRequest, authorization: str = Header(None
             ]
         }
     }
-
-
 class RefinementAnalysisRequest(BaseModel):
     preparedContext: dict
 

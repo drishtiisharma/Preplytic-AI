@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Sun, HelpCircle, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-const navLinks = [
+const navLinks: {name: string, href: string, hasDropdown?: boolean}[] = [
   { name: "Features", href: "#features" },
   { name: "How It Works", href: "#how-it-works" },
   { name: "About Us", href: "#about" },

@@ -206,7 +206,7 @@ export default function AIInterviewPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                       <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Number of Questions</label>
-                      <Select value={numberOfQuestions} onValueChange={setNumberOfQuestions}>
+                      <Select value={numberOfQuestions} onValueChange={(val) => setNumberOfQuestions(val as string)}>
                         <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl border-slate-100 dark:border-border h-[42px] shadow-none flex items-center gap-2 px-2.5">
                           <Clock className="w-4 h-4 text-slate-400 shrink-0" />
                           <div className="flex-1 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300"><SelectValue placeholder="Select Number of Questions" /></div>
@@ -221,7 +221,7 @@ export default function AIInterviewPage() {
                 </div>
                   <div className="space-y-1.5">
                       <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Difficulty</label>
-                      <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
+                      <Select value={selectedDifficulty} onValueChange={(val) => setSelectedDifficulty(val as string)}>
                         <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl border-slate-100 dark:border-border h-[42px] shadow-none flex items-center gap-2 px-2.5">
                           <BarChart className={`w-4 h-4 shrink-0 ${selectedDifficulty === "Hard" ? "text-red-400" : selectedDifficulty === "Medium" ? "text-amber-500" : "text-emerald-500"}`} />
                           <div className="flex-1 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300"><SelectValue placeholder="Select Difficulty" /></div>

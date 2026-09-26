@@ -58,6 +58,8 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   
+  const currentQ = questions[currentQuestionIndex];
+  const existingResponse = responses.find(r => r.question_id === currentQ?.id);
   useEffect(() => {
     if (currentQ?.question_text && !existingResponse) {
       fetch('/api/tts', {
@@ -82,7 +84,7 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
-      const chunks = [];
+      const chunks: BlobPart[] = [];
       recorder.ondataavailable = (e) => chunks.push(e.data);
       recorder.onstop = async () => {
         const audioBlob = new Blob(chunks, { type: 'audio/webm' });
@@ -124,15 +126,6 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
   };
 
   const [isCompleting, setIsCompleting] = useState<boolean>(false);
-  const [isCompleting, setIsCompleting] = useState<boolean>(false);
-  const [responses, setResponses] = useState<any[]>([]);
-  const [answer, setAnswer] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string>("");
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-  const [questionsLoading, setQuestionsLoading] = useState<boolean>(true);
-  const [questionsError, setQuestionsError] = useState<string>("");
 
   useEffect(() => {
     async function loadSessionAndQuestions() {
@@ -181,8 +174,6 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
     }
   }, [sessionId, supabase]);
 
-  const currentQ = questions[currentQuestionIndex];
-  const existingResponse = responses.find(r => r.question_id === currentQ?.id);
 
   useEffect(() => {
     if (existingResponse) {
@@ -213,26 +204,6 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
     }
   };
 
-  const completeInterview = async () => {
-    setIsCompleting(true);
-    setSubmitError("");
-    
-    const { error } = await supabase
-      .from('interview_sessions')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', sessionId);
-      
-    if (error) {
-      console.error(error);
-      setSubmitError("Failed to complete interview.");
-      setIsCompleting(false);
-    } else {
-      router.push(`/interview/${sessionId}/report`);
-    }
-  };
 
   const handleAnswerSubmit = async () => {
     if (!currentQ || !answer.trim()) return;
@@ -407,50 +378,8 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
     }
   }, [sessionId, supabase]);
 
-  const currentQ = questions[currentQuestionIndex];
-  const existingResponse = responses.find(r => r.question_id === currentQ?.id);
 
-  useEffect(() => {
-    if (existingResponse) {
-      setAnswer(existingResponse.response_text || "");
-    } else {
-      setAnswer("");
-    }
-  }, [currentQuestionIndex, existingResponse]);
 
-  const handleAnswerSubmit = async () => {
-    if (!currentQ || !answer.trim()) return;
-    
-    setIsSubmitting(true);
-    setSubmitError("");
-    
-    const { data, error } = await supabase
-      .from('interview_responses')
-      .insert({
-        session_id: sessionId,
-        question_id: currentQ.id,
-        response_text: answer
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      console.error(error);
-      setSubmitError("Failed to save answer.");
-    } else if (data) {
-      setResponses(prev => [...prev, data]);
-      setAnswer("");
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
-        setIsSubmitting(false);
-      } else {
-        await completeInterview();
-      }
-    } else {
-      setIsSubmitting(false);
-    }
-  };
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const availableResumeTopics = ["React", "Node.js", "System Design", "TypeScript", "Next.js"];
   const [selectedResumeTopics, setSelectedResumeTopics] = useState<string[]>(["React", "Node.js", "System Design"]);
   
@@ -572,7 +501,7 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Target Job</label>
-                  <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                  <Select value={selectedJobId} onValueChange={(val) => setSelectedJobId(val as string)}>
                     <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl border-slate-100 dark:border-border h-11 shadow-none">
                       <SelectValue placeholder="Select Job Profile" />
                     </SelectTrigger>
@@ -587,7 +516,7 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                       <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Number of Questions</label>
-                      <Select value={numberOfQuestions} onValueChange={setNumberOfQuestions}>
+                      <Select value={numberOfQuestions} onValueChange={(val) => setNumberOfQuestions(val as string)}>
                         <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl border-slate-100 dark:border-border h-[42px] shadow-none flex items-center gap-2 px-2.5">
                           <Clock className="w-4 h-4 text-slate-400 shrink-0" />
                           <div className="flex-1 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300"><SelectValue placeholder="Select Number of Questions" /></div>
@@ -602,7 +531,7 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
                 </div>
                   <div className="space-y-1.5">
                       <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Difficulty</label>
-                      <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
+                      <Select value={selectedDifficulty} onValueChange={(val) => setSelectedDifficulty(val as string)}>
                         <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl border-slate-100 dark:border-border h-[42px] shadow-none flex items-center gap-2 px-2.5">
                           <BarChart className={`w-4 h-4 shrink-0 ${selectedDifficulty === "Hard" ? "text-red-400" : selectedDifficulty === "Medium" ? "text-amber-500" : "text-emerald-500"}`} />
                           <div className="flex-1 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300"><SelectValue placeholder="Select Difficulty" /></div>
@@ -618,7 +547,7 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
 
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Baseline Resume</label>
-                  <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
+                  <Select value={selectedResumeId} onValueChange={(val) => setSelectedResumeId(val as string)}>
                     <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl border-slate-100 dark:border-border h-11 shadow-none">
                       <SelectValue placeholder="Select Resume" />
                     </SelectTrigger>

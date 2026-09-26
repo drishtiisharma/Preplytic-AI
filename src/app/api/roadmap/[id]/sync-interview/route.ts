@@ -39,7 +39,7 @@ async function generateAIResponse(preparedContext: any): Promise<any> {
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -49,7 +49,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const roadmapId = params.id;
+    const { id: roadmapId } = await params;
     if (!roadmapId) {
       return NextResponse.json({ error: "Missing roadmap ID" }, { status: 400 });
     }
@@ -205,9 +205,9 @@ export async function POST(
 // 
 //     return NextResponse.json({ success: true, data: finalRoadmap, source: "interview_sync" });
 // 
-//   } catch (error: any) {
-//     console.error("Roadmap interview sync error:", error);
-//     return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 });
-//   }
+  } catch (error: any) {
+    console.error("Roadmap interview sync error:", error);
+    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 });
+  }
 // */
 }

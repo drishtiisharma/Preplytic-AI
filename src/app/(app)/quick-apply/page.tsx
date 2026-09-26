@@ -68,10 +68,12 @@ export default function QuickApplyPage() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) return;
 
-      const [jobsRes, resumesRes] = await Promise.all([
+      const [jobsRes, resumesRes, profileRes] = await Promise.all([
         supabase.from('job_profiles').select('*').eq('user_id', userData.user.id).order('created_at', { ascending: false }),
-        supabase.from('resume_records').select('*').eq('user_id', userData.user.id).order('uploaded_at', { ascending: false })
+        supabase.from('resume_records').select('*').eq('user_id', userData.user.id).order('uploaded_at', { ascending: false }),
+        supabase.from('candidate_profiles').select('*').eq('user_id', userData.user.id).limit(1)
       ]);
+      setCandidateProfile(profileRes.data?.[0] || null);
 
       const jobs = jobsRes.data || [];
       const resumesData = resumesRes.data || [];
@@ -134,6 +136,10 @@ export default function QuickApplyPage() {
   };
 
   const handleGenerateColdMail = async () => {
+    if (!candidateProfile) {
+      toast.error("Please set up your candidate profile first in the Candidate tab.");
+      return;
+    }
     setIsGeneratingColdMail(true);
     try {
       const job = jobProfiles.find(j => j.id === selectedJobId);
@@ -153,7 +159,11 @@ export default function QuickApplyPage() {
         })
       });
       
-      if (!response.ok) throw new Error("Failed to generate");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const detail = typeof errData.detail === "string" ? errData.detail : JSON.stringify(errData.detail);
+        throw new Error(detail || "Failed to generate");
+      }
       
       const result = await response.json();
       
@@ -193,6 +203,10 @@ export default function QuickApplyPage() {
   };
 
   const handleGenerateReferral = async () => {
+    if (!candidateProfile) {
+      toast.error("Please set up your candidate profile first in the Candidate tab.");
+      return;
+    }
     setIsGeneratingReferral(true);
     try {
       const job = jobProfiles.find(j => j.id === selectedJobId);
@@ -220,7 +234,11 @@ export default function QuickApplyPage() {
         })
       });
       
-      if (!response.ok) throw new Error("Failed to generate");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const detail = typeof errData.detail === "string" ? errData.detail : JSON.stringify(errData.detail);
+        throw new Error(detail || "Failed to generate");
+      }
       
       const result = await response.json();
       

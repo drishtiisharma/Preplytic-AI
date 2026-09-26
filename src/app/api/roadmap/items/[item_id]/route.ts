@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { item_id: string } }
+  { params }: { params: Promise<{ item_id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -13,7 +13,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const itemId = params.item_id;
+    const { item_id: itemId } = await params;
     if (!itemId) {
       return NextResponse.json({ error: "Missing item ID" }, { status: 400 });
     }
