@@ -25,6 +25,33 @@ Output the result ONLY as a valid JSON object matching this schema:
 Do not include markdown blocks or any other text outside the JSON.`;
 
 
+function sanitizeRoadmap(roadmap: any) {
+  if (!roadmap || !roadmap.roadmap_versions) return roadmap;
+  
+  const parseArray = (val: any) => {
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') {
+      try { return JSON.parse(val); } catch (e) {
+        const clean = val.replace(/^\{|\}$/g, '').trim();
+        return clean ? clean.split(',').map((s: string) => s.trim()) : [];
+      }
+    }
+    return [];
+  };
+
+  roadmap.roadmap_versions = roadmap.roadmap_versions.map((version: any) => {
+    if (version.roadmap_items) {
+      version.roadmap_items = version.roadmap_items.map((item: any) => ({
+        ...item,
+        skills: parseArray(item.skills),
+        resources: parseArray(item.resources)
+      }));
+    }
+    return version;
+  });
+  return roadmap;
+}
+
 function validateRoadmap(roadmap: any) {
   if (typeof roadmap.readiness_score !== 'number' || roadmap.readiness_score < 0 || roadmap.readiness_score > 100) throw new Error("Invalid readiness_score");
   if (typeof roadmap.estimated_weeks !== 'number' || roadmap.estimated_weeks <= 0) throw new Error("Invalid estimated_weeks");
@@ -109,7 +136,10 @@ export async function POST(request: Request) {
                       (typeof existingRoadmap.focus_skills === 'string' && existingRoadmap.focus_skills.includes('Pending AI Generation'));
       
       if (!isDummy) {
-        return NextResponse.json({ success: true, data: existingRoadmap, source: "cache" });
+        const hasItems = existingRoadmap.roadmap_versions?.some((v: any) => v.roadmap_items && v.roadmap_items.length > 0);
+        if (hasItems) {
+            return NextResponse.json({ success: true, data: sanitizeRoadmap(existingRoadmap), source: "cache" });
+        }
       }
       // Delete dummy so we can replace it cleanly
       await supabase.from('roadmaps').delete().eq('id', existingRoadmap.id);
@@ -201,7 +231,11 @@ export async function POST(request: Request) {
 
     if (versionError) throw versionError;
 
-    const itemsToInsert = generatedRoadmap.phases.map((phase: any) => ({
+    if (!generatedRoadmap.phases || !Array.isArray(generatedRoadmap.phases) || generatedRoadmap.phases.length === 0) {
+      throw new Error("Generated roadmap phases is missing or empty.");
+    }
+    
+    const itemsToInsert = generatedRoadmap.phases.map((phase: any, index: number) => ({
       roadmap_version_id: versionInsert.id,
       title: phase.title,
       description: phase.description,
@@ -211,8 +245,13 @@ export async function POST(request: Request) {
       skills: phase.skills,
       resources: phase.resources,
       progress: 0,
-      status: "not_started"
+      status: "not_started",
+      order_index: index
     }));
+    
+    if (itemsToInsert.length === 0) {
+      throw new Error("itemsToInsert is unexpectedly empty.");
+    }
 
     console.log("ITEMS TO INSERT:", itemsToInsert);
     const { error: itemsError } = await supabase
@@ -221,6 +260,17 @@ export async function POST(request: Request) {
 
     if (itemsError) throw itemsError;
 
+    // 8. Verify the insert succeeded by explicitly querying roadmap_items
+    const { count: itemsCount, error: countError } = await supabase
+      .from("roadmap_items")
+      .select("*", { count: "exact", head: true })
+      .eq("roadmap_version_id", versionInsert.id);
+      
+    if (countError) throw countError;
+    if (itemsCount === null || itemsCount === 0) {
+      throw new Error(`Failed to save roadmap items. Expected ${itemsToInsert.length} but found 0 in database.`);
+    }
+
     // 7. Return the final structured data
     const { data: finalRoadmap } = await supabase
       .from("roadmaps")
@@ -228,7 +278,7 @@ export async function POST(request: Request) {
       .eq("id", roadmapInsert.id)
       .single();
 
-    return NextResponse.json({ success: true, data: finalRoadmap, source: "generated" });
+    return NextResponse.json({ success: true, data: sanitizeRoadmap(finalRoadmap), source: "generated" });
 
   } catch (error: any) {
     console.error("Roadmap generation error:", error);

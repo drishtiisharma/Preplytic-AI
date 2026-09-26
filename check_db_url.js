@@ -1,10 +1,12 @@
 const fs = require('fs');
-['.env.local', 'backend/.env'].forEach(file => {
-    if (fs.existsSync(file)) {
-        console.log(`--- ${file} ---`);
-        let lines = fs.readFileSync(file, 'utf8').split('\n');
-        lines.forEach(l => {
-            if (l.includes('DB') || l.includes('POSTGRES')) console.log(l.trim());
-        });
+let envs = [
+    fs.existsSync('.env.local') ? fs.readFileSync('.env.local', 'utf8') : '',
+    fs.existsSync('backend/.env') ? fs.readFileSync('backend/.env', 'utf8') : '',
+    fs.existsSync('.env') ? fs.readFileSync('.env', 'utf8') : ''
+].join('\n');
+
+for (let line of envs.split('\n')) {
+    if (line.includes('DATABASE_URL') || line.includes('POSTGRES')) {
+        console.log(line);
     }
-});
+}

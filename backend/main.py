@@ -519,7 +519,7 @@ Output the result ONLY as a valid JSON object matching this schema:
     }
   ]
 }
-IMPORTANT: The 'resources' array for each phase MUST be empty []. Do not include markdown blocks or any other text outside the JSON."""
+IMPORTANT: You MUST generate at least 3-4 phases. The 'resources' array inside each phase MUST be empty []. Do not include markdown blocks or any other text outside the JSON."""
 
         prompt = f"Adaptive Context: {json.dumps(clean_roadmap_context)}"
         
@@ -608,7 +608,7 @@ Return a structured JSON object exactly matching this schema:
     }
   ]
 }
-IMPORTANT: The 'resources' array for each phase MUST be empty []."""
+IMPORTANT: You MUST generate at least 3-4 phases. The 'resources' array inside each phase MUST be empty []."""
 
         generate_prompt = f"Adaptive Context: {json.dumps(req.preparedContext)}\n\nRefinement Analysis: {json.dumps(analysis_data)}"
 
