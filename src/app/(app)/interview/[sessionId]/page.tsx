@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { 
@@ -32,8 +32,9 @@ import {
 // Mock Data
 
 
-export default function AIInterviewPage({ params }: { params: { sessionId: string } }) {
-  const { sessionId } = params;
+export default function AIInterviewPage() {
+  const params = useParams();
+  const sessionId = params?.sessionId as string;
   const supabase = createClient();
   const router = useRouter();
   const [messages, setMessages] = useState<any[]>([]);
@@ -184,6 +185,7 @@ export default function AIInterviewPage({ params }: { params: { sessionId: strin
   }, [currentQuestionIndex, existingResponse]);
 
   const completeInterview = async () => {
+    if (!sessionId) return;
     setIsCompleting(true);
     setSubmitError("");
     
