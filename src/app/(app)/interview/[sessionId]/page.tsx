@@ -74,7 +74,7 @@ export default function AIInterviewPage() {
             res.blob().then(blob => {
                const audioUrl = URL.createObjectURL(blob);
                const audio = new Audio(audioUrl);
-               // audio.play().catch(e => console.warn("Audio autoplay blocked"));
+               audio.play().catch(e => console.warn("Audio autoplay blocked", e));
             });
          }
       }).catch(console.error);

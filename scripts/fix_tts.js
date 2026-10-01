@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+const fs = require('fs');
+
+const content = `import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +24,7 @@ export async function POST(req: NextRequest) {
       const errText = await backendResponse.text();
       console.error("Backend TTS Error:", errText);
       return NextResponse.json(
-        { error: `Backend TTS generation failed: ${backendResponse.statusText}` }, 
+        { error: \`Backend TTS generation failed: \${backendResponse.statusText}\` }, 
         { status: backendResponse.status }
       );
     }
@@ -42,3 +44,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message || "Failed to process TTS" }, { status: 500 });
   }
 }
+`;
+
+fs.writeFileSync('src/app/api/tts/route.ts', content, 'utf8');
+console.log("Updated TTS route as proxy!");

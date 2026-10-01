@@ -146,7 +146,90 @@ export default function AIInterviewPage() {
           console.error(error);
           setErrors({ submit: "Failed to create interview session. Please try again." });
         } else if (data) {
-          router.push(`/interview/${data.id}`);
+          try {
+            // Fetch Job Profile
+            const { data: jobProfile, error: jobError } = await supabase
+              .from('job_profiles')
+              .select('job_description, title, company')
+              .eq('id', selectedJobId)
+              .single();
+
+            if (jobError || !jobProfile) {
+              setErrors({ submit: "Failed to load Job Profile data." });
+              return;
+            }
+
+            // Fetch Resume
+            const { data: resumeRecord, error: resumeError } = await supabase
+              .from('resume_records')
+              .select('*')
+              .eq('id', selectedResumeId)
+              .single();
+
+            if (resumeError || !resumeRecord) {
+              setErrors({ submit: "Failed to load Resume data." });
+              return;
+            }
+
+            // Generate Questions via Python Backend
+            const payload = {
+              number_of_questions: questionsCount,
+              difficulty: selectedDifficulty,
+              selected_jd_topics: selectedJobTopics,
+              selected_resume_topics: selectedResumeTopics,
+              job_profile: jobProfile,
+              resume_data: resumeRecord
+            };
+
+            const response = await fetch("http://localhost:8000/generate/interview-questions", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                // Pass auth token if needed? The backend requires Authorization header!
+              },
+              body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+              const errText = await response.text();
+              console.error("AI Generation Error:", errText);
+              setErrors({ submit: "Failed to generate interview questions. AI backend error." });
+              return;
+            }
+
+            const aiData = await response.json();
+            const generatedQuestions = aiData.questions || [];
+
+            if (!Array.isArray(generatedQuestions) || generatedQuestions.length === 0) {
+              setErrors({ submit: "AI generated an empty or invalid question set." });
+              return;
+            }
+
+                        // Insert questions into interview_questions
+            const questionsToInsert = generatedQuestions.map((q, index) => ({
+              session_id: data.id,
+              question_number: index + 1,
+              question_text: typeof q === 'string' ? q : JSON.stringify(q)
+            }));
+
+            const { error: insertError } = await supabase
+              .from('interview_questions')
+              .insert(questionsToInsert);
+
+            if (insertError) {
+              console.error("Question Insert Error:", insertError);
+              setErrors({ submit: "Failed to save generated questions to the database." });
+              return;
+            }
+
+            // Finally, navigate
+            router.push(`/interview/${data.id}`);
+          } catch (genErr) {
+            console.error("Generation/Insertion Error:", genErr);
+            setErrors({ submit: "An unexpected error occurred during question generation." });
+            return;
+          }
         }
       } catch (err) {
         console.error(err);
