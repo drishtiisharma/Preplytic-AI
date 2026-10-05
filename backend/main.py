@@ -71,7 +71,7 @@ async def parse_endpoint(
         print("Parsing error:", e)
         raise HTTPException(status_code=500, detail="Failed to parse resume")
 
-from ai.clients import gemini_client, groq_client, mistral_client, groq_roadmap_client, tavily_client
+from ai.clients import gemini_client, groq_client, mistral_client, groq_roadmap_client, tavily_client, openrouter_client
 from ai.config import AIConfig
 import uuid
 
@@ -218,8 +218,8 @@ async def evaluate_interview_answer(req: InterviewEvaluateRequest, authorization
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
         
-    if not groq_client:
-        raise HTTPException(status_code=500, detail="Groq client not configured")
+    if not openrouter_client:
+        raise HTTPException(status_code=500, detail="OpenRouter client not configured")
         
     prompt = f"""
     Evaluate the following candidate answer to an interview question.
@@ -401,8 +401,8 @@ async def generate_interview_report(req: InterviewReportRequest, authorization: 
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
         
-    if not groq_client:
-        raise HTTPException(status_code=500, detail="Groq client not configured")
+    if not openrouter_client:
+        raise HTTPException(status_code=500, detail="OpenRouter client not configured")
         
     transcript = ""
     for q in req.questions:
@@ -447,14 +447,16 @@ async def generate_interview_report(req: InterviewReportRequest, authorization: 
     """
     
     try:
-        response = groq_client.chat.completions.create(
-            model=AIConfig.GROQ_TEXT_MODEL,
+        response = openrouter_client.chat.completions.create(
+            model=AIConfig.OPENROUTER_TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            response_format={"type": "json_object"}
+            temperature=0.3
         )
         import json
         text = response.choices[0].message.content.strip()
+        if text.startswith("`"): text = text.split("\n", 1)[-1]
+        if text.endswith("`"): text = text.rsplit("\n", 1)[0]
+        text = text.strip()
         report_data = json.loads(text)
         return {"report": report_data}
     except Exception as e:

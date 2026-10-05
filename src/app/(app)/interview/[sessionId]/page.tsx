@@ -74,7 +74,23 @@ export default function AIInterviewPage() {
             res.blob().then(blob => {
                const audioUrl = URL.createObjectURL(blob);
                const audio = new Audio(audioUrl);
-               audio.play().catch(e => console.warn("Audio autoplay blocked", e));
+               
+               audio.onplay = () => {
+                 setInterviewState(prev => ({ ...prev, isAiSpeaking: true }));
+               };
+               
+               audio.onended = () => {
+                 setInterviewState(prev => ({ ...prev, isAiSpeaking: false }));
+               };
+               
+               audio.onerror = () => {
+                 setInterviewState(prev => ({ ...prev, isAiSpeaking: false }));
+               };
+
+               audio.play().catch(e => {
+                 console.warn("Audio autoplay blocked", e);
+                 setInterviewState(prev => ({ ...prev, isAiSpeaking: false }));
+               });
             });
          }
       }).catch(console.error);
@@ -661,7 +677,7 @@ export default function AIInterviewPage() {
                 <div className="mb-6 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-border">
                   <p className="text-[12px] font-bold text-teal-600 dark:text-teal-400 mb-1.5 uppercase tracking-wider">Current Question</p>
                   <p className="text-[15px] font-medium text-slate-800 dark:text-slate-200 leading-relaxed">
-                    "{interviewState.currentQuestion}"
+                    {currentQ ? `"${currentQ.question_text}"` : "Loading question..."}
                   </p>
                 </div>
 

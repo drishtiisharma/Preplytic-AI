@@ -1,5 +1,15 @@
 from .config import AIConfig
 
+# Initialize OpenRouter
+from openai import OpenAI
+if AIConfig.OPENROUTER_API_KEY:
+    openrouter_client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=AIConfig.OPENROUTER_API_KEY,
+    )
+else:
+    openrouter_client = None
+
 # Initialize Gemini
 import google.genai as genai
 if AIConfig.GEMINI_API_KEY:

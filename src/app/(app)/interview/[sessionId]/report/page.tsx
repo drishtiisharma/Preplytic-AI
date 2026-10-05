@@ -1,25 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { useEffect, useState, useRef } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import { PageContainer } from "@//components/layout/PageContainer";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-);
-
-export default function InterviewReportPage({ params }: { params: { sessionId: string } }) {
+export default function InterviewReportPage() {
   const router = useRouter();
-  const { sessionId } = params;
+  const params = useParams();
+  const sessionId = params?.sessionId as string;
+  const supabase = createClient();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<any | null>(null);
+  const hasGenerated = useRef(false);
 
   useEffect(() => {
     async function fetchReport() {
@@ -58,6 +56,9 @@ export default function InterviewReportPage({ params }: { params: { sessionId: s
           setReport(reportData);
         } else {
           // Report not found, generate it!
+          if (hasGenerated.current) return;
+          hasGenerated.current = true;
+          
           const res = await fetch('/api/report/generate', {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },

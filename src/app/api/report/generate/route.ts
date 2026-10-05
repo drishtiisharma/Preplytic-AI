@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,13 +8,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
     }
 
-    // Get auth token from request to pass to backend
-    const authHeader = req.headers.get('authorization');
+    const supabase = await createClient();
     
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-    );
+    // Get auth token from current Supabase session to pass to backend
+    const { data: { session: userSession } } = await supabase.auth.getSession();
+    const accessToken = userSession?.access_token;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     // 1. Prevent duplicate report generation
     const { data: existingReport } = await supabase
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': authHeader || `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` // Fallback for backend auth
+        'Authorization': `Bearer ${accessToken}`
       },
       body: JSON.stringify({
         job_profile: jobRes.data || {},

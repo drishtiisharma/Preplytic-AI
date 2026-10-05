@@ -6,6 +6,10 @@ env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 class AIConfig:
+    # OpenRouter
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+    OPENROUTER_TEXT_MODEL = os.getenv("OPENROUTER_TEXT_MODEL", "openrouter/free")
+    
     # Gemini
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     GEMINI_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-3.8-flash")
