@@ -407,9 +407,9 @@ export default function PreparationRoadmapPage() {
 
                                     <DropdownMenu>
                                       <DropdownMenuTrigger>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700">
+                                        <div className="flex items-center justify-center h-8 w-8 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 cursor-pointer">
                                           <ChevronDown className="w-5 h-5" />
-                                        </Button>
+                                        </div>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={() => updateItemStatus(stage.id, 0, "not_started")}>
@@ -485,7 +485,7 @@ export default function PreparationRoadmapPage() {
                       <svg className="absolute inset-0 w-full h-full -rotate-90 text-teal-500" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="8" 
                           strokeDasharray="289" 
-                          strokeDashoffset={289 - (289 * totalProgress) / 100} 
+                          strokeDashoffset={isNaN(totalProgress) ? 289 : (289 - (289 * totalProgress) / 100)} 
                           className="drop-shadow-sm transition-all duration-500" 
                         />
                       </svg>

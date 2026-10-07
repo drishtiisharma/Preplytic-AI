@@ -409,7 +409,7 @@ async def generate_interview_report(req: InterviewReportRequest, authorization: 
         resp = next((r for r in req.responses if r.get('question_id') == q.get('id')), None)
         transcript += f"Q: {q.get('question_text')}\n"
         if resp:
-            transcript += f"A: {resp.get('response_text', 'No answer')}\n"
+            transcript += f"A: {resp.get('transcript', 'No answer')}\n"
             eval_data = resp.get('evaluation', {})
             transcript += f"Evaluation: {eval_data}\n\n"
         else:

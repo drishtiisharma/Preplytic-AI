@@ -43,24 +43,7 @@ export async function PATCH(
       }
     }
 
-    // Verify ownership: We need to check if the item belongs to a roadmap owned by the user.
-    // We can do this efficiently by querying the item and joining its parents.
-    const { data: existingItem, error: fetchError } = await supabase
-      .from("roadmap_items")
-      .select("id, status, progress, roadmap_versions(roadmaps(user_id))")
-      .eq("id", itemId)
-      .single();
-
-    if (fetchError || !existingItem) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
-    }
-
-    // @ts-ignore - deeply nested Supabase response types can be tricky
-    const itemUserId = existingItem.roadmap_versions?.roadmaps?.user_id;
-
-    if (itemUserId !== user.id) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
+    
 
     // Perform the update
     const updateData: any = {};

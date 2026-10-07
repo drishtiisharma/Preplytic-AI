@@ -464,7 +464,7 @@ export default function AIInterviewPage() {
                       <div 
                         key={i} 
                         className={"w-1.5 rounded-full bg-teal-500/80 transition-all duration-150 " + (interviewState.isAiSpeaking ? ("h-" + (val * 2 + 2)) : "h-2")}
-                        style={{ animation: interviewState.isAiSpeaking ? 'pulse-y 1s ease-in-out infinite alternate' : 'none', animationDelay: i * 0.1 + 's' }}
+                        style={{ animation: interviewState.isAiSpeaking ? 'pulse-y 1s ease-in-out infinite alternate' : 'none', animationDelay: `${i * 0.1}s` }}
                       />
                     ))}
                   </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ import {
   Link as LinkIcon
 } from "lucide-react";
 
-export default function CreateJobProfilePage() {
+function CreateJobProfileForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -307,5 +307,13 @@ export default function CreateJobProfilePage() {
         </Card>
       </div>
     </PageContainer>
+  );
+}
+
+export default function CreateJobProfilePage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Loading job profile form...</div>}>
+      <CreateJobProfileForm />
+    </Suspense>
   );
 }

@@ -230,41 +230,19 @@ export default function AIInterviewPage() {
     setSubmitError("");
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data: sData } = await supabase.from('interview_sessions').select('*').eq('id', sessionId).single();
-      const { data: jData } = await supabase.from('job_profiles').select('*').eq('id', sData.job_profile_id).single();
-      const { data: rData } = await supabase.from('resume_records').select('*').eq('id', sData.resume_id).single();
-
-      const response = await fetch("http://localhost:8000/generate/interview-evaluate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`
-        },
-        body: JSON.stringify({
-          question: currentQ.question_text,
-          answer: answer,
-          job_profile: jData,
-          resume_data: rData,
-          difficulty: sData.difficulty || "Medium"
-        })
-      });
-
-      let evaluation = null;
-      if (response.ok) {
-        const result = await response.json();
-        evaluation = result.evaluation;
-      } else {
-        console.warn("Evaluation failed", await response.text());
-      }
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setMessages(prev => [
+        ...prev,
+        { id: Date.now().toString(), sender: 'ai', text: currentQ.question_text, time: timeStr },
+        { id: (Date.now() + 1).toString(), sender: 'user', text: answer, time: timeStr }
+      ]);
 
       const { data, error } = await supabase
         .from('interview_responses')
         .insert({
           session_id: sessionId,
           question_id: currentQ.id,
-          response_text: answer,
-          evaluation: evaluation
+          transcript: answer
         })
         .select()
         .single();
@@ -276,63 +254,10 @@ export default function AIInterviewPage() {
         return;
       }
       
-      let nextIndex = currentQuestionIndex;
       if (data) {
         setResponses(prev => [...prev, data]);
         setAnswer("");
         
-        // Follow-up generation
-        try {
-           const remainingQuestions = questions.length - 1 - currentQuestionIndex;
-           const followupResponse = await fetch("http://localhost:8000/generate/interview-followup", {
-             method: "POST",
-             headers: {
-               "Content-Type": "application/json",
-               "Authorization": `Bearer ${session?.access_token}`
-             },
-             body: JSON.stringify({
-               current_question: currentQ.question_text,
-               answer: answer,
-               evaluation: evaluation || {},
-               job_profile: jData,
-               resume_data: rData,
-               difficulty: sData.difficulty || "Medium",
-               remaining_questions: remainingQuestions
-             })
-           });
-           
-           if (followupResponse.ok) {
-             const fwResult = await followupResponse.json();
-             if (fwResult.followup && fwResult.followup.should_follow_up && fwResult.followup.question) {
-                // Insert follow up into DB
-                const { data: insertedQ } = await supabase
-                  .from("interview_questions")
-                  .insert({
-                    session_id: sessionId,
-                    question_text: fwResult.followup.question
-                  })
-                  .select()
-                  .single();
-                  
-                if (insertedQ) {
-                   // Insert into local state right after current question
-                   setQuestions(prev => {
-                      const newQ = [...prev];
-                      newQ.splice(currentQuestionIndex + 1, 0, insertedQ);
-                      return newQ;
-                   });
-                   // We added a question, so we are definitely not at the end
-                   setCurrentQuestionIndex(prev => prev + 1);
-                   setIsSubmitting(false);
-                   return; // Early return to prevent normal check
-                }
-             }
-           }
-        } catch (fwErr) {
-           console.error("Follow up error", fwErr);
-        }
-
-        // Normal check if we didn't insert a follow-up
         if (currentQuestionIndex < questions.length - 1) {
           setCurrentQuestionIndex(prev => prev + 1);
           setIsSubmitting(false);
@@ -662,7 +587,7 @@ export default function AIInterviewPage() {
                       <div 
                         key={i} 
                         className={"w-1.5 rounded-full bg-teal-500/80 transition-all duration-150 " + (interviewState.isAiSpeaking ? ("h-" + (val * 2 + 2)) : "h-2")}
-                        style={{ animation: interviewState.isAiSpeaking ? 'pulse-y 1s ease-in-out infinite alternate' : 'none', animationDelay: i * 0.1 + 's' }}
+                        style={{ animation: interviewState.isAiSpeaking ? 'pulse-y 1s ease-in-out infinite alternate' : 'none', animationDelay: `${i * 0.1}s` }}
                       />
                     ))}
                   </div>
@@ -691,15 +616,7 @@ export default function AIInterviewPage() {
                     >
                       {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                     </Button>
-                  {answer && !existingResponse && (
-                      <Button 
-                        onClick={handleAnswerSubmit} 
-                        disabled={isSubmitting || isProcessingVoice}
-                        className="h-14 px-8 rounded-2xl font-bold shadow-md bg-teal-600 hover:bg-teal-700 text-white"
-                      >
-                        {isSubmitting ? "Evaluating..." : "Submit Answer"}
-                      </Button>
-                    )}
+                  
                     
                     <Button onClick={completeInterview} variant="destructive" className="h-14 px-8 rounded-2xl font-bold shadow-md shadow-red-500/20">
                     <PhoneOff className="w-5 h-5 mr-2" />
@@ -734,7 +651,7 @@ export default function AIInterviewPage() {
                   
                   <div className={"flex items-center gap-2 text-[11px] font-medium " + (msg.sender === "user" ? "text-slate-400 flex-row-reverse" : "text-teal-600")}>
                     {msg.sender === "ai" ? "AI Interviewer" : "You"}
-                    <span className="text-slate-300 dark:text-slate-600">ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢</span>
+                    <span className="text-slate-300 dark:text-slate-600">•</span>
                     <span className="text-slate-400">{msg.time}</span>
                   </div>
 
@@ -746,10 +663,43 @@ export default function AIInterviewPage() {
               ))}
             </div>
 
-            {/* Speaking Indicator */}
-            <div className="p-4 border-t border-slate-100 dark:border-border bg-slate-50/80 dark:bg-slate-900/50 shrink-0 flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-              <p className="text-[12px] font-medium text-slate-500">AI is speaking...</p>
+            {/* Chat Input Area */}
+            <div className="p-4 border-t border-slate-100 dark:border-border bg-white dark:bg-card shrink-0">
+              {interviewState.isAiSpeaking && (
+                <div className="flex items-center gap-2 mb-3 px-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                  <p className="text-[11px] font-medium text-slate-500">AI is speaking...</p>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" className="shrink-0 h-11 w-11 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 bg-white">
+                  <Volume2 className="w-4 h-4" />
+                </Button>
+                <div className="flex-1 flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-500 transition-all">
+                  <input
+                    type="text"
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    placeholder="Type your answer here..."
+                    className="flex-1 bg-transparent border-none text-sm px-4 py-3 text-slate-800 dark:text-slate-200 focus:outline-none placeholder:text-slate-400"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && answer.trim()) {
+                        handleAnswerSubmit();
+                      }
+                    }}
+                    disabled={isSubmitting || isProcessingVoice}
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="rounded-none h-full px-4 hover:bg-transparent text-teal-600"
+                    onClick={handleAnswerSubmit}
+                    disabled={!answer.trim() || isSubmitting || isProcessingVoice}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                  </Button>
+                </div>
+              </div>
             </div>
           </Card>
 

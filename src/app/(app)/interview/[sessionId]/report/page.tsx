@@ -20,6 +20,9 @@ export default function InterviewReportPage() {
   const hasGenerated = useRef(false);
 
   useEffect(() => {
+    if (hasGenerated.current) return;
+    hasGenerated.current = true;
+    
     async function fetchReport() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -56,8 +59,6 @@ export default function InterviewReportPage() {
           setReport(reportData);
         } else {
           // Report not found, generate it!
-          if (hasGenerated.current) return;
-          hasGenerated.current = true;
           
           const res = await fetch('/api/report/generate', {
              method: 'POST',
