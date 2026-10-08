@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const sttKey = process.env.STT_API_KEY;
+    const sttKey = process.env.GROQ_API_KEY;
     if (!sttKey) {
       return NextResponse.json(
-        { error: "STT configuration missing. Please set STT_API_KEY in your environment." },
+        { error: "STT configuration missing. Please set GROQ_API_KEY in your environment." },
         { status: 501 }
       );
     }
