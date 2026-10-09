@@ -15,15 +15,18 @@ import {
   DropdownMenuItem, 
   DropdownMenuLabel, 
   DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger, 
+  DropdownMenuGroup
 } from "@/components/ui/dropdown-menu";
 
+
+
 const navLinks = [
-  { name: "Features", href: "#features" },
-  { name: "How It Works", href: "#how-it-works" },
-  { name: "About Us", href: "#about" },
-  { name: "FAQ", href: "#faq" },
-  { name: "Contact Us", href: "#contact" },
+  { name: "Features", href: "/#features" },
+  { name: "How It Works", href: "/#how-it-works" },
+  { name: "About Us", href: "/#about" },
+  { name: "FAQ", href: "/#faq" },
+  { name: "Contact Us", href: "/#contact" },
 ];
 
 export function TopNav() {
@@ -56,6 +59,7 @@ export function TopNav() {
               </div>
             </Link>
 
+
             {/* Desktop Nav */}
             <nav className="hidden lg:flex items-center gap-6">
               {navLinks.map((link) => (
@@ -68,12 +72,13 @@ export function TopNav() {
                 </Link>
               ))}
             </nav>
+
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Desktop Help */}
             <div className="hidden md:flex items-center mr-2">
-              <Link href="#help" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 flex items-center gap-1">
+              <Link href="/#faq" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 flex items-center gap-1">
                 <HelpCircle className="w-4 h-4" />
                 Help
               </Link>
@@ -104,14 +109,16 @@ export function TopNav() {
                 </Button>
               } />
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/settings')}>Settings</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={async () => {
-                  await supabase.auth.signOut();
-                  router.push('/');
-                }} className="text-red-600 focus:text-red-600">Logout</DropdownMenuItem>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push('/settings')}>Settings</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={async () => {
+                    await supabase.auth.signOut();
+                    router.push('/');
+                  }} className="text-red-600 focus:text-red-600">Logout</DropdownMenuItem>
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -130,6 +137,7 @@ export function TopNav() {
                       <img src="/logo.png" alt="Preplytic AI" className="h-full w-full object-contain object-left dark:brightness-200 dark:contrast-100" />
                     </div>
                   </Link>
+
                   <nav className="flex flex-col gap-3">
                     {navLinks.map((link) => (
                       <Link
@@ -140,10 +148,11 @@ export function TopNav() {
                         {link.name}
                       </Link>
                     ))}
-                    <Link href="#help" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 mt-2 flex items-center gap-2">
+                    <Link href="/#faq" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 mt-2 flex items-center gap-2">
                       <HelpCircle className="w-4 h-4" /> Help
                     </Link>
                   </nav>
+
                 </div>
                 <div className="flex-1 overflow-y-auto">
                   <div className="p-4">

@@ -9,10 +9,11 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-1">
-        <Hero />
-        <HowItWorks />
-        <FAQ />
-        <ContactUs />
+        <div id="about"><Hero /></div>
+        <div id="features"></div>
+        <div id="how-it-works"><HowItWorks /></div>
+        <div id="faq"><FAQ /></div>
+        <div id="contact"><ContactUs /></div>
       </main>
       
       {/* Simple Footer */}

@@ -62,12 +62,16 @@ export default function ResetPasswordPage() {
     setIsLoading(false);
 
     if (error) {
-      setErrors({ submit: error.message });
+      let msg = error.message;
+      if (msg.toLowerCase().includes("different from the old password") || msg.toLowerCase().includes("same") || msg.toLowerCase().includes("should be different")) {
+        msg = "Please choose a different password from your current one.";
+      }
+      setErrors({ submit: msg });
     } else {
       setSuccess(true);
       // Wait a moment then redirect to dashboard or login
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push("/login");
       }, 3000);
     }
   };
