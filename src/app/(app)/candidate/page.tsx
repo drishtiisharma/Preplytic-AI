@@ -3,7 +3,7 @@ import { getCandidateProfile, getLatestResume } from "./actions";
 import { ResumeUploader } from "@/components/candidate/ResumeUploader";
 import { EditProfileDialog } from "@/components/candidate/EditProfileDialog";
 import { CandidateSetupOptions } from "@/components/candidate/CandidateSetupOptions";
-import { MatchScoreCard } from "@/components/candidate/MatchScoreCard";
+import { CandidateDashboardContent } from "@/components/candidate/CandidateDashboardContent";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -41,12 +41,6 @@ export default async function CandidateProfilePage() {
   };
 
 
-
-  const topSkills = (profile?.skills || []).slice(0, 5).map((s: string) => ({
-    name: s,
-    progress: 80,
-    level: "Advanced"
-  }));
 
   const resumeData = latestResume ? {
     filename: latestResume.file_name || "Resume.pdf",
@@ -147,64 +141,7 @@ export default async function CandidateProfilePage() {
         </Card>
 
         {/* Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
-          
-          {/* Left Column */}
-          <div className="space-y-6">
-            
-            {/* Profile Summary */}
-            <Card className="rounded-2xl border-slate-100 shadow-sm p-6 bg-white dark:bg-card">
-              <div className="flex items-center gap-2 mb-4">
-                <UserCheck className="w-5 h-5 text-teal-500" />
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Profile Summary</h3>
-              </div>
-              <p className="text-[14px] text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                {candidateData.summary}
-              </p>
-              <div className="flex flex-wrap gap-2 mt-5">
-                {candidateData.skills.slice(0, 5).map((skill: string) => (
-                  <span key={skill} className="inline-flex items-center px-3 py-1 rounded-lg bg-[#f0fbf9] dark:bg-teal-950/30 text-[13px] font-medium text-teal-700 dark:text-teal-300">
-                    {skill}
-                  </span>
-                ))}
-                {candidateData.additionalSkillsCount > 0 && <span className="inline-flex items-center px-3 py-1 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[13px] font-medium text-slate-600 dark:text-slate-400">+{candidateData.additionalSkillsCount} more</span>}
-              </div>
-            </Card>
-
-            {/* Top Skills */}
-            <Card className="rounded-2xl border-slate-100 shadow-sm p-6 bg-white dark:bg-card">
-              <div className="flex items-center gap-2 mb-6">
-                <TrendingUp className="w-5 h-5 text-teal-500" />
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Top Skills</h3>
-              </div>
-              <div className="space-y-5">
-                {topSkills.length > 0 ? topSkills.map((skill: any) => (
-                  <div key={skill.name} className="flex items-center justify-between text-[14px]">
-                    <span className="font-medium text-slate-700 dark:text-slate-300 w-40">{skill.name}</span>
-                    <Progress value={skill.progress} className="h-2 flex-1 mx-4 bg-slate-100 dark:bg-slate-800 [&>div]:bg-teal-500" />
-                    <span className="text-slate-500 w-20 text-right">{skill.level}</span>
-                  </div>
-                )) : (
-                  <p className="text-sm text-muted-foreground">No parsed skills available from resume.</p>
-                )}
-              </div>
-            </Card>
-
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            
-            {/* Overall Match Score */}
-            <MatchScoreCard jobs={jobs || []} profile={profile} />
-
-            
-
-
-            
-
-          </div>
-        </div>
+        <CandidateDashboardContent profile={profile} jobs={jobs || []} candidateData={candidateData} />
       </div>
     </PageContainer>
   );

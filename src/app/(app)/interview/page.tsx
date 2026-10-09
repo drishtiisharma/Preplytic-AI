@@ -443,19 +443,12 @@ export default function AIInterviewPage() {
               <div className="flex-1 bg-slate-50 dark:bg-[#0c1015] flex flex-col items-center justify-center relative">
                 
                 {/* Decorative background circles */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-                  <div className="w-64 h-64 border border-teal-500/10 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]" />
-                  <div className="absolute w-96 h-96 border border-teal-500/5 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite] animation-delay-1000" />
-                </div>
+                
 
                 <div className="relative z-10 flex flex-col items-center">
                   <div className="w-32 h-32 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 shadow-xl flex items-center justify-center mb-8 border-4 border-white dark:border-slate-800 relative">
                     <Bot className="w-14 h-14 text-white" />
-                    {interviewState.isAiSpeaking && (
-                      <div className="absolute -bottom-2 -right-2 bg-emerald-500 w-6 h-6 rounded-full border-2 border-white dark:border-slate-800 flex items-center justify-center">
-                        <Volume2 className="w-3 h-3 text-white" />
-                      </div>
-                    )}
+                    
                   </div>
 
                   {/* Soundwave representation */}
@@ -468,7 +461,7 @@ export default function AIInterviewPage() {
                       />
                     ))}
                   </div>
-                  <p className="text-[13px] font-medium text-slate-500 mt-4">AI is speaking...</p>
+                  
                 </div>
               </div>
 
@@ -483,18 +476,7 @@ export default function AIInterviewPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-center gap-4">
-                  <Button variant="outline" size="icon" className="w-14 h-14 rounded-2xl border-slate-200 text-slate-600 hover:bg-slate-50 bg-white">
-                    <Mic className="w-5 h-5" />
-                  </Button>
-                  <Button variant="destructive" className="h-14 px-8 rounded-2xl font-bold shadow-md shadow-red-500/20">
-                    <PhoneOff className="w-5 h-5 mr-2" />
-                    End Call
-                  </Button>
-                  <Button variant="outline" size="icon" className="w-14 h-14 rounded-2xl border-slate-200 text-slate-600 hover:bg-slate-50 bg-white">
-                    <Volume2 className="w-5 h-5" />
-                  </Button>
-                </div>
+                <div className="flex flex-col items-center justify-center gap-2"></div>
               </div>
             </Card>
           </div>
@@ -506,9 +488,7 @@ export default function AIInterviewPage() {
                 <MessageSquare className="w-4 h-4 text-teal-600" />
                 <h3 className="text-[15px] font-bold text-slate-900 dark:text-white">Live Transcript</h3>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
-                <Download className="w-4 h-4" />
-              </Button>
+              
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-6">

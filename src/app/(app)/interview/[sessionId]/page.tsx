@@ -8,6 +8,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   StopCircle,
   Settings,
@@ -58,6 +59,7 @@ export default function AIInterviewPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [isEndInterviewDialogOpen, setIsEndInterviewDialogOpen] = useState<boolean>(false);
   
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
@@ -413,6 +415,9 @@ export default function AIInterviewPage() {
     }
   };
 
+  const isInterviewStarted = sessionId && sessionId !== "new";
+  const isThinking = isInterviewStarted && (isSubmitting || questionsLoading || isProcessingVoice || (questions.length > 0 && !currentQ));
+
   return (
     <PageContainer>
       <div className="max-w-[1600px] mx-auto space-y-6 pb-6 h-full min-h-[calc(100vh-6rem)] flex flex-col">
@@ -571,19 +576,18 @@ export default function AIInterviewPage() {
               <div className="flex-1 bg-slate-50 dark:bg-[#0c1015] flex flex-col items-center justify-center relative">
                 
                 {/* Decorative background circles */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-                  <div className="w-64 h-64 border border-teal-500/10 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]" />
-                  <div className="absolute w-96 h-96 border border-teal-500/5 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite] animation-delay-1000" />
-                </div>
+                {isThinking && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+                    <div className="w-64 h-64 border-2 border-dashed border-teal-500/20 rounded-full animate-[spin_8s_linear_infinite] opacity-60" />
+                    <div className="absolute w-96 h-96 border-2 border-dashed border-teal-500/10 rounded-full animate-[spin_12s_linear_infinite_reverse] opacity-40" />
+                    <div className="absolute w-72 h-72 border border-teal-500/20 rounded-full animate-pulse opacity-50" />
+                  </div>
+                )}
 
                 <div className="relative z-10 flex flex-col items-center">
                   <div className="w-32 h-32 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 shadow-xl flex items-center justify-center mb-8 border-4 border-white dark:border-slate-800 relative">
                     <Bot className="w-14 h-14 text-white" />
-                    {false && (
-                      <div className="absolute -bottom-2 -right-2 bg-emerald-500 w-6 h-6 rounded-full border-2 border-white dark:border-slate-800 flex items-center justify-center">
-                        <Volume2 className="w-3 h-3 text-white" />
-                      </div>
-                    )}
+                    
                   </div>
 
                   {/* Soundwave representation */}
@@ -596,7 +600,7 @@ export default function AIInterviewPage() {
                       />
                     ))}
                   </div>
-                  <p className="text-[13px] font-medium text-slate-500 mt-4">AI is speaking...</p>
+                  {isThinking && <p className="text-[13px] font-medium text-slate-500 mt-4 animate-pulse">AI is thinking...</p>}
                 </div>
               </div>
 
@@ -611,26 +615,7 @@ export default function AIInterviewPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-center gap-4">
-                  <Button 
-                      variant={isRecording ? "default" : "outline"}
-                      size="icon" 
-                      className={`w-14 h-14 rounded-2xl border-slate-200 ${isRecording ? "bg-red-500 hover:bg-red-600 text-white animate-pulse" : "text-slate-600 hover:bg-slate-50 bg-white"}`}
-                      onClick={isRecording ? stopRecording : startRecording}
-                      disabled={isProcessingVoice || isSubmitting}
-                    >
-                      {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                    </Button>
-                  
-                    
-                    <Button onClick={completeInterview} variant="destructive" className="h-14 px-8 rounded-2xl font-bold shadow-md shadow-red-500/20">
-                    <PhoneOff className="w-5 h-5 mr-2" />
-                    End Call
-                  </Button>
-                  <Button variant="outline" size="icon" className="w-14 h-14 rounded-2xl border-slate-200 text-slate-600 hover:bg-slate-50 bg-white">
-                    <Volume2 className="w-5 h-5" />
-                  </Button>
-                
+                <div className="flex flex-col items-center justify-center gap-2">
                   {submitError && <p className="text-red-500 text-sm mt-4 text-center">{submitError}</p>}
                   {isProcessingVoice && <p className="text-teal-600 text-sm mt-4 text-center animate-pulse">Processing Voice Transcript...</p>}
                 </div>
@@ -645,9 +630,7 @@ export default function AIInterviewPage() {
                 <MessageSquare className="w-4 h-4 text-teal-600" />
                 <h3 className="text-[15px] font-bold text-slate-900 dark:text-white">Live Transcript</h3>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
-                <Download className="w-4 h-4" />
-              </Button>
+              
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
@@ -670,16 +653,14 @@ export default function AIInterviewPage() {
 
             {/* Chat Input Area */}
             <div className="p-4 border-t border-slate-100 dark:border-border bg-white dark:bg-card shrink-0">
-              {false && (
+              {isThinking && (
                 <div className="flex items-center gap-2 mb-3 px-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-                  <p className="text-[11px] font-medium text-slate-500">AI is speaking...</p>
+                  <p className="text-[11px] font-medium text-slate-500 animate-pulse">AI is thinking...</p>
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" className="shrink-0 h-11 w-11 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 bg-white">
-                  <Volume2 className="w-4 h-4" />
-                </Button>
+                
                 <div className="flex-1 flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-500 transition-all">
                   <input
                     type="text"
