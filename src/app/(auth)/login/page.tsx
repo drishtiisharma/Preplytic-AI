@@ -71,7 +71,7 @@ export default function LoginPage() {
     if (error) {
       setErrors({ submit: error.message });
     } else {
-      router.push("/dashboard");
+      router.push("/candidate");
     }
   };
 

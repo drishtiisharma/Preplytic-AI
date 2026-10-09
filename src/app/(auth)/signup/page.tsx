@@ -26,7 +26,7 @@ export default function SignupPage() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/candidate`,
       },
     });
   };
@@ -80,7 +80,7 @@ export default function SignupPage() {
       setErrors({ submit: "Success! Please check your email to verify your account." });
       // If auto-login is allowed without confirmation:
       if (data.session) {
-         router.push("/dashboard");
+         router.push("/candidate");
       }
     }
   };

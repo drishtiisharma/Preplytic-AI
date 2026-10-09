@@ -34,6 +34,7 @@ export function TopNav() {
   const router = useRouter();
   const supabase = createClient();
   const [user, setUser] = useState<any>(null);
+  const [avatarDisplayUrl, setAvatarDisplayUrl] = useState<string | null>(null);
   
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -95,8 +96,8 @@ export function TopNav() {
               <DropdownMenuTrigger render={
                 <Button variant="ghost" className="rounded-full p-1 pl-1 pr-3 flex items-center gap-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                   <div className="h-8 w-8 rounded-full bg-teal-500 flex items-center justify-center text-white shrink-0 overflow-hidden">
-                    {user?.user_metadata?.avatar_url ? (
-                      <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    {avatarDisplayUrl ? (
+                      <img src={avatarDisplayUrl} alt="Avatar" className="w-full h-full object-cover" />
                     ) : user?.user_metadata?.full_name ? (
                       <span className="text-sm font-medium">{user.user_metadata.full_name.charAt(0).toUpperCase()}</span>
                     ) : (

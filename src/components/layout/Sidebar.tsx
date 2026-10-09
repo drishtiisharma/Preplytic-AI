@@ -22,7 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+  // { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
   { name: "Job Profiles", href: "/job-profiles", icon: Briefcase },
   { name: "Candidate Profile", href: "/candidate", icon: User },
   { name: "Quick Apply", href: "/quick-apply", icon: Send },

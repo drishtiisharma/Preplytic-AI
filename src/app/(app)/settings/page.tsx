@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarDisplayUrl, setAvatarDisplayUrl] = useState<string | null>(null);
   
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,6 +42,15 @@ export default function SettingsPage() {
         setEmail(user.email || "");
         setName(user.user_metadata?.full_name || "");
         setAvatarUrl(user.user_metadata?.avatar_url || null);
+        if (user.user_metadata?.avatar_url) {
+          if (user.user_metadata.avatar_url.startsWith('http')) {
+            setAvatarDisplayUrl(user.user_metadata.avatar_url);
+          } else {
+            supabase.storage.from('avatars').createSignedUrl(user.user_metadata.avatar_url, 60 * 60 * 24 * 365).then(({ data }) => {
+              if (data?.signedUrl) setAvatarDisplayUrl(data.signedUrl + `&v=${Date.now()}`);
+            });
+          }
+        }
       } else {
         router.push("/login");
       }
@@ -97,18 +107,20 @@ export default function SettingsPage() {
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath);
-
+    // Store the path, not public URL
     const { error: updateError } = await supabase.auth.updateUser({
-      data: { avatar_url: publicUrl }
+      data: { avatar_url: filePath }
     });
 
     if (updateError) {
       showMessage("error", "Failed to update profile: " + updateError.message);
     } else {
-      setAvatarUrl(publicUrl);
+      setAvatarUrl(filePath);
+      // Generate signed url for immediate display
+      const { data } = await supabase.storage.from('avatars').createSignedUrl(filePath, 60 * 60 * 24 * 365);
+      if (data?.signedUrl) {
+        setAvatarDisplayUrl(data.signedUrl + `&v=${Date.now()}`);
+      }
       showMessage("success", "Profile picture updated.");
     }
     
@@ -200,8 +212,8 @@ export default function SettingsPage() {
               {/* Avatar Column */}
               <div className="flex flex-col items-center gap-4 w-full md:w-56 shrink-0 mt-2">
                 <div className="relative">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="Avatar" className="w-[120px] h-[120px] rounded-full object-cover border" />
+                  {avatarDisplayUrl ? (
+                    <img src={avatarDisplayUrl} alt="Avatar" className="w-[120px] h-[120px] rounded-full object-cover border" />
                   ) : (
                     <div className="w-[120px] h-[120px] rounded-full bg-gradient-to-br from-[#c1f4e1] to-[#a2d8ce] flex items-center justify-center text-4xl font-medium text-teal-900">
                       {name ? name.charAt(0).toUpperCase() : <UserIcon className="w-12 h-12 opacity-50" />}

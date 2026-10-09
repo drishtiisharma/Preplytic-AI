@@ -59,6 +59,11 @@ export default function AIInterviewPage() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
   const currentQ = questions[currentQuestionIndex];
   const existingResponse = responses.find(r => r.question_id === currentQ?.id);
   useEffect(() => {
@@ -547,7 +552,7 @@ export default function AIInterviewPage() {
 
           {/* 2. AI Interviewer Column */}
           <div className="flex flex-col gap-6">
-            <Card className="flex-1 rounded-3xl border-slate-200 shadow-sm bg-white dark:bg-card overflow-hidden flex flex-col relative min-h-[400px]">
+            <Card className="flex-1 rounded-3xl border-slate-200 shadow-sm bg-white dark:bg-card overflow-hidden flex flex-col relative min-h-[400px] min-h-0 h-full max-h-full">
               
               {/* Top Bar inside interviewer */}
               <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
@@ -634,7 +639,7 @@ export default function AIInterviewPage() {
           </div>
 
           {/* 3. Live Conversation Column */}
-          <Card className="rounded-3xl border-slate-200 shadow-sm bg-white dark:bg-card flex flex-col overflow-hidden xl:col-span-1 lg:col-span-2 hidden lg:flex">
+          <Card className="rounded-3xl border-slate-200 shadow-sm bg-white dark:bg-card flex flex-col overflow-hidden xl:col-span-1 lg:col-span-2 hidden lg:flex min-h-0 h-full max-h-full">
             <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-border bg-slate-50/50 dark:bg-slate-900/20 shrink-0">
               <div className="flex items-center gap-2.5">
                 <MessageSquare className="w-4 h-4 text-teal-600" />
